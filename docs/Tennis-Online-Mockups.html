@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tennis Online — Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1657C8; --blue-d:#0E3E96; --blue-l:#E8F0FD; --green:#159A54; --green-l:#E6F6EE;
+  --orange:#E08A16; --orange-l:#FDF3E0; --red:#E0483C; --purple:#7A3FB8;
+  --ink:#1B2733; --muted:#6B7887; --line:#E3E8EF; --bg:#F1F5F9; --card:#FFFFFF;
+  --shadow:0 1px 3px rgba(16,32,64,.08),0 8px 24px rgba(16,32,64,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+h1,h2,h3,.brandf{font-family:'Prompt','Sarabun',sans-serif}
+/* top switcher */
+.switch{position:sticky;top:0;z-index:50;background:#0B1F3A;color:#fff;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 16px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.switch b{font-family:'Prompt';margin-right:10px;letter-spacing:.5px}
+.switch button{font-family:'Sarabun';font-size:12.5px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#dbe6f5;padding:6px 11px;border-radius:8px;cursor:pointer;transition:.15s}
+.switch button:hover{background:rgba(255,255,255,.16)}
+.switch button.active{background:#fff;color:#0B1F3A;border-color:#fff;font-weight:600}
+.screen{display:none;padding:22px;max-width:1280px;margin:0 auto}
+.screen.show{display:block}
+.badge-real{display:inline-block;background:var(--green-l);color:var(--green);font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+.badge-mock{display:inline-block;background:#EEF1F5;color:var(--muted);font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+/* generic */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.row{display:flex;gap:16px}
+.btn{border:none;border-radius:10px;padding:11px 18px;font-family:'Sarabun';font-weight:600;font-size:13.5px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.btn-oline{background:#fff;border:1px solid var(--blue);color:var(--blue)}
+label.f{display:block;font-weight:600;font-size:12.5px;margin:0 0 5px;color:#33414F}
+label.f .req{color:var(--red)}
+.inp,select.inp,textarea.inp{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:'Sarabun';font-size:13px;background:#fff;color:var(--ink)}
+.inp::placeholder{color:#AEB7C2}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.mb{margin-bottom:14px}
+.hint{color:var(--muted);font-size:12px}
+/* ambassador console shell */
+.console{display:grid;grid-template-columns:236px 1fr;gap:0;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.side{background:#fff;border-right:1px solid var(--line);padding:16px 12px}
+.logo{display:flex;align-items:center;gap:9px;padding:4px 8px 14px}
+.logo .ball{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#C9F24D,#8FC61E);border:2px solid #6FA80F;position:relative}
+.logo .ball:after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 6px -3px 0 -4px #fff,inset -6px 3px 0 -4px #fff}
+.logo b{font-family:'Prompt';color:var(--blue);font-size:20px;letter-spacing:1px;line-height:1}
+.logo small{display:block;font-size:8px;letter-spacing:2px;color:var(--muted)}
+.side .grp{font-size:11px;color:#9AA5B1;font-weight:700;margin:14px 10px 4px;letter-spacing:.3px}
+.side a{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;color:#3A4756;text-decoration:none;font-size:13px;cursor:pointer}
+.side a .ic{width:17px;text-align:center;opacity:.8}
+.side a:hover{background:#F4F7FB}
+.side a.on{background:var(--blue-l);color:var(--blue);font-weight:600}
+.side a.logout{color:var(--red)}
+.main{padding:22px 26px;background:#FCFDFE;min-height:640px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.topbar h2{margin:0 0 3px;font-size:22px}
+.topbar .sub{color:var(--muted);font-size:13px}
+.who{display:flex;align-items:center;gap:10px}
+.who .ava{width:40px;height:40px;border-radius:50%;background:#D9E2EC url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="15" r="8" fill="%23AEBACB"/><rect x="6" y="26" width="28" height="16" rx="8" fill="%23AEBACB"/></svg>') center/cover}
+.who small{color:var(--muted);font-size:11px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.pill.ok{background:var(--green-l);color:var(--green)}
+.pill.pend{background:var(--orange-l);color:var(--orange)}
+.pill.warn{background:#FCEBEA;color:var(--red)}
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{display:flex;gap:12px;align-items:center;padding:15px}
+.stat .ci{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+.stat .n{font-family:'Prompt';font-size:26px;line-height:1}
+.stat .l{color:var(--muted);font-size:12px}
+/* stepper */
+.stepper{display:flex;align-items:center;margin:6px 0 22px;padding:4px 6px}
+.stepper .st{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto;width:120px;text-align:center}
+.stepper .dot{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Prompt'}
+.stepper .st.act .dot{background:var(--blue);border-color:var(--blue);color:#fff}
+.stepper .st .cap{font-size:12px;color:var(--muted)}
+.stepper .st.act .cap{color:var(--blue);font-weight:600}
+.stepper .bar{flex:1;height:2px;background:var(--line);margin-top:-20px}
+.stepper .bar.act{background:var(--blue)}
+.section-title{display:flex;align-items:center;gap:8px;font-family:'Prompt';font-size:16px;margin:4px 0 14px}
+.section-title .num{width:24px;height:24px;border-radius:7px;background:var(--blue-l);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.acc{border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;color:#33414F;font-family:'Prompt';font-size:15px;background:#fff}
+.aside{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+.aside h4{margin:0 0 10px;font-size:14px}
+.chk{display:flex;gap:9px;align-items:flex-start;margin-bottom:9px;font-size:12.5px;color:#3A4756}
+.chk .g{color:var(--green)}
+.tag{display:inline-flex;align-items:center;gap:5px;background:var(--blue-l);color:var(--blue);border-radius:8px;padding:4px 9px;font-size:12px;margin:2px}
+.thumb{height:70px;border-radius:8px;background:linear-gradient(135deg,#2E7D57,#3DA06E);position:relative;overflow:hidden}
+.thumb:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 14px,rgba(255,255,255,.15) 14px,rgba(255,255,255,.15) 15px)}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs .t{padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13px;cursor:pointer;font-weight:600;color:#4A5765}
+.tabs .t.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+table.list{width:100%;border-collapse:collapse}
+table.list th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:10px;border-bottom:1px solid var(--line)}
+table.list td{padding:12px 10px;border-bottom:1px solid #EEF2F6;font-size:13px}
+.cmp{width:100%;border-collapse:collapse}
+.cmp th{font-size:12.5px;color:#33414F;text-align:left;padding:9px 10px;border-bottom:2px solid var(--line)}
+.cmp td{padding:9px 10px;border-bottom:1px solid #EEF2F6;font-size:13px}
+.cmp .old{color:var(--muted)}
+.cmp td.changed{background:var(--orange-l);border-radius:6px}
+.cmp .newv{color:var(--blue);font-weight:600}
+.dotwrap{display:flex;gap:8px}
+.pubcard{background:linear-gradient(135deg,#FADCE4,#F6E6ED);min-height:100vh}
+.opt{border:1px solid var(--line);border-radius:11px;padding:14px;text-align:center;font-weight:600;font-size:13px;cursor:pointer;color:#4A5765}
+.opt.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-l)}
+.opt .ic{font-size:20px;display:block;margin-bottom:6px}
+.note{font-size:11px;color:#9AA5B1;margin-top:14px;text-align:center}
+@media(max-width:900px){.console{grid-template-columns:1fr}.side{display:none}.stats,.grid3,.grid2{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="switch">
+  <b>🎾 TENNIS ONLINE · Mockups</b>
+  <button data-s="signup" class="active">1 · สมัคร Ambassador</button>
+  <button data-s="admin">2 · Admin Dashboard</button>
+  <button data-s="dash">3 · Ambassador หน้าหลัก</button>
+  <button data-s="add">4 · เพิ่มสนาม ★</button>
+  <button data-s="event">5 · ส่งการแข่งขัน</button>
+  <button data-s="verify">6 · ตรวจสอบ/เทียบซ้ำ ★</button>
+  <button data-s="story">7 · ส่งเรื่องราว</button>
+  <button data-s="recommend">8 · แนะนำบุคคล/คลับ</button>
+</div>
+
+<!-- ============ 1. PUBLIC SIGNUP ============ -->
+<section class="screen show" id="signup">
+  <div class="pubcard" style="border-radius:16px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:14px;padding:12px 22px;box-shadow:var(--shadow);margin-bottom:22px">
+      <div class="logo" style="padding:0"><div class="ball"></div><div><b>TENNIS ONLINE</b><small>THAILAND</small></div></div>
+      <div style="display:flex;gap:24px;align-items:center;font-size:13.5px;color:#3A4756">
+        <span>หน้าแรก</span><span>เทนนิสไทย</span><span>คลิปวิดีโอ</span><span>ถาม-ตอบ Q&amp;A</span>
+        <span style="color:var(--blue);font-weight:700;border-bottom:2px solid var(--blue);padding-bottom:3px">TOT Ambassador</span><span>เกี่ยวกับเรา</span>
+        <button class="btn btn-green" style="border-radius:22px">⊕ สมัครสมาชิก TOT</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:16px;margin-bottom:22px">
+      <div style="flex:1;text-align:center"><div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--blue);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 8px">1</div><b>สมัครแสดงความสนใจ</b><div class="hint">กรอกข้อมูลเบื้องต้น ชื่อ จังหวัด บทบาท</div></div>
+      <div style="flex:1;text-align:center"><div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 8px">2</div><b>ทีมงานติดต่อกลับ</b><div class="hint">สัมภาษณ์สั้นๆ เพื่อชี้แจงเป้าหมาย</div></div>
+      <div style="flex:1;text-align:center"><div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 8px">3</div><b>รวบรวมสำรวจข้อมูล</b><div class="hint">เริ่มทำแผนที่สังเขปของคอร์ต คลับ</div></div>
+      <div style="flex:1;text-align:center"><div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--red);color:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 8px">4</div><b>รับการแต่งตั้งเป็นสมาชิก</b><div class="hint">ประกาศขึ้นสถานะอย่างเป็นทางการ</div></div>
+    </div>
+    <div class="row" style="align-items:stretch">
+      <div class="card" style="flex:1;padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-family:'Prompt';font-size:13px;color:var(--muted);letter-spacing:1px">REGIONAL STATUS</b><span class="pill ok">🗄 Realtime Database</span></div>
+        <h2 style="margin:2px 0 14px">ข้อมูลเครือข่ายทุกภูมิภาค</h2>
+        <div style="border:1px solid var(--blue-l);border-radius:12px;padding:14px">
+          <div style="display:flex;justify-content:space-between"><b>📍 กรุงเทพมหานคร</b><span class="hint">6 โซน</span></div>
+          <div class="hint" style="margin:6px 0 12px">ศูนย์กลางหลัก TOT Ambassador ครอบคลุม 6 โซนย่อยสำคัญ</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between"><span><b>โซนเมืองทอง – แจ้งวัฒนะ</b><br><span class="hint">LTAT, สตูดิโอสื่อมวลชน TOT</span></span><span class="tag">18 คอร์ท</span></div>
+            <div style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between"><span><b>โซนสุขุมวิท – พระราม 4</b><br><span class="hint">The Polo Club, Spin &amp; Slice</span></span><span class="tag">24 คอร์ท</span></div>
+            <div style="border:1px solid var(--line);border-radius:9px;padding:9px 11px;display:flex;justify-content:space-between"><span><b>โซนพระราม 9 – รัชดา</b><br><span class="hint">สนามในร่ม Indoor Tennis</span></span><span class="tag">15 คอร์ท</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="flex:1;padding:22px">
+        <h2 style="margin:0 0 4px">✨ แบบฟอร์มแสดงความสนใจเข้าร่วมโครงการ</h2>
+        <div class="hint mb">กรอกข้อมูลเพื่อร่วมสมัครเป็นผู้แทนกันนำ Founding Ambassador ทีมงานจะติดต่อกลับภายใน 2-3 วันทำการ</div>
+        <div class="grid2 mb">
+          <div><label class="f">ชื่อ-นามสกุลจริง <span class="req">*</span></label><input class="inp" placeholder="ป้อนชื่อและนามสกุลของคุณ..."></div>
+          <div><label class="f">จังหวัดประจำพื้นที่ <span class="req">*</span></label><select class="inp"><option>กรุงเทพมหานคร</option></select></div>
+        </div>
+        <div class="mb"><label class="f">ระบุโซนพื้นที่ในกรุงเทพมหานคร (District / Area Zone) <span class="req">*</span></label><select class="inp"><option>โซนเมืองทอง – แจ้งวัฒนะ</option></select></div>
+        <div class="grid2 mb">
+          <div><label class="f">บทบาทของคุณในปัจจุบัน <span class="req">*</span></label><select class="inp"><option>ผู้เล่นทั่วไป (Player)</option><option>โค้ช (Coach)</option><option>เจ้าของสนาม/คลับ</option></select></div>
+          <div><label class="f">เบอร์โทรศัพท์ / LINE ID ติดต่อกลับ <span class="req">*</span></label><input class="inp" placeholder="เช่น 089-xxxxxxx หรือ LINE: xxxx…"></div>
+        </div>
+        <div class="chk mb"><input type="checkbox" checked><span class="hint">ข้าพเจ้ายินยอมให้ TOT เก็บและใช้ชื่อ จังหวัด และช่องทางติดต่อ เพื่อติดต่อกลับและประสานงานโครงการ TOT Ambassador</span></div>
+        <button class="btn btn-blue" style="width:100%;justify-content:center">🚀 ส่งรายละเอียดและลงทะเบียนสมัครความร่วมมือ</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. ADMIN DASHBOARD ============ -->
+<section class="screen" id="admin">
+  <div class="topbar">
+    <div><h2>🗄 ระบบผู้ดูแล TOT Admin Dashboard <span class="pill ok">Auth Active</span></h2><div class="sub">จัดการข้อมูลข่าวสารสด, เครือข่าย TOT Ambassador และกระดานถาม-ตอบ Q&amp;A เชื่อมต่อ Supabase DB</div></div>
+    <div class="dotwrap"><button class="btn btn-ghost">⟳ รีเฟรชข้อมูล</button><button class="btn btn-ghost" style="color:var(--orange);border-color:var(--orange-l)">🗑 ลบข้อมูลซ้ำ</button><button class="btn btn-blue">＋ เพิ่ม Ambassador ใหม่</button><button class="btn btn-ghost">⇥ ออกจากระบบ</button></div>
+  </div>
+  <div class="tabs"><div class="t">📰 ข่าวประจำวัน (6)</div><div class="t on">👥 TOT Ambassador (4)</div><div class="t">❓ Q&amp;A Community (6)</div></div>
+  <div class="stats">
+    <div class="card stat"><div class="ci" style="background:var(--green)">🗄</div><div><div class="l">สถานะ SUPABASE DB</div><b style="color:var(--green)">Connected</b><div class="hint">เชื่อมต่อฐานข้อมูลเรียบร้อย</div></div></div>
+    <div class="card stat"><div class="ci" style="background:var(--blue)">👥</div><div><div class="n">4</div><div class="l">แอมบาสเดอร์ทั้งหมด</div></div></div>
+    <div class="card stat"><div class="ci" style="background:var(--green)">✓</div><div><div class="n" style="color:var(--green)">2</div><div class="l">อนุมัติแล้ว (APPROVED)</div></div></div>
+    <div class="card stat"><div class="ci" style="background:var(--orange)">⏱</div><div><div class="n" style="color:var(--orange)">2</div><div class="l">รอการตรวจสอบ</div></div></div>
+  </div>
+  <div class="card" style="padding:16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px"><input class="inp" style="max-width:360px" placeholder="🔍 ค้นหาชื่อ, จังหวัด, หรือเบอร์ติดต่อ..."><select class="inp" style="max-width:200px"><option>สถานะการอนุมัติ: ทั้งหมด</option></select></div>
+    <table class="list">
+      <thead><tr><th>ชื่อ-นามสกุล</th><th>จังหวัด / ภูมิภาค</th><th>บทบาทเทนนิส</th><th>ช่องทางติดต่อ</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+      <tbody>
+        <tr><td><b>ศิริลักษณ์ วงษ์ดี</b></td><td>กรุงเทพมหานคร</td><td>ผู้เล่นทั่วไป</td><td>089-xxx-1122</td><td><span class="pill ok">Approved</span></td><td><span class="hint">✓ ดู · แก้ไข</span></td></tr>
+        <tr><td><b>ธนกร ศรีสุข</b></td><td>นนทบุรี</td><td>โค้ช</td><td>081-xxx-3344</td><td><span class="pill ok">Approved</span></td><td><span class="hint">✓ ดู · แก้ไข</span></td></tr>
+        <tr><td><b>พิมพ์ชนก ใจดี</b></td><td>ชลบุรี</td><td>เจ้าของคลับ</td><td>LINE: pim.tennis</td><td><span class="pill pend">Pending</span></td><td><button class="btn btn-green" style="padding:5px 12px">อนุมัติ</button></td></tr>
+        <tr><td><b>อนุชา เทพา</b></td><td>เชียงใหม่</td><td>ผู้เล่นทั่วไป</td><td>090-xxx-7788</td><td><span class="pill pend">Pending</span></td><td><button class="btn btn-green" style="padding:5px 12px">อนุมัติ</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ CONSOLE SHELL (screens 3-8) ============ -->
+<template id="tpl-side">
+  <div class="side">
+    <div class="logo"><div class="ball"></div><div><b>TOT</b><small>FOUNDING AMBASSADOR</small></div></div>
+    <a data-go="dash"><span class="ic">🏠</span> หน้าหลัก</a>
+    <div class="grp">ข้อมูลสนาม</div>
+    <a data-go="add"><span class="ic">⊕</span> เพิ่มสนามใหม่</a>
+    <a data-go="verify"><span class="ic">🔍</span> ตรวจสอบ / อัปเดตข้อมูล</a>
+    <a><span class="ic">🗂</span> สนามของฉัน</a>
+    <div class="grp">การแข่งขัน &amp; กิจกรรม</div>
+    <a data-go="event"><span class="ic">📅</span> ส่งการแข่งขัน / กิจกรรม</a>
+    <a><span class="ic">📋</span> รายการของฉัน</a>
+    <div class="grp">เครือข่าย &amp; ชุมชน</div>
+    <a data-go="recommend"><span class="ic">👤</span> แนะนำบุคคล / คลับ</a>
+    <a><span class="ic">📍</span> พื้นที่รับผิดชอบ</a>
+    <div class="grp">เนื้อหา &amp; เรื่องราว</div>
+    <a data-go="story"><span class="ic">✍️</span> ส่งเรื่องราว / ภาพ</a>
+    <a><span class="ic">🖼</span> ผลงานของฉัน</a>
+    <div style="height:14px"></div>
+    <a><span class="ic">👤</span> ข้อมูลส่วนตัว</a>
+    <a><span class="ic">📖</span> คู่มือการใช้งาน</a>
+    <a class="logout"><span class="ic">⇥</span> ออกจากระบบ</a>
+  </div>
+</template>
+<template id="tpl-who">
+  <div class="who"><span style="font-size:20px">🔔</span><span style="font-size:20px">✉️</span><div class="ava"></div><div><b>คุณศิริลักษณ์</b><br><small>กรุงเทพมหานคร</small></div></div>
+</template>
+
+<!-- 3. AMBASSADOR DASHBOARD -->
+<section class="screen" id="dash">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>ยินดีต้อนรับ, TOT Founding Ambassador <span class="pill ok">Approved</span></h2><div class="sub">ขอบคุณที่ร่วมเป็นส่วนหนึ่งในการพัฒนาเทนนิสไทย</div></div><div class="who-mount"></div></div>
+    <div class="stats">
+      <div class="card stat"><div class="ci" style="background:var(--blue)">📄</div><div><div class="n">24</div><div class="l">ข้อมูลที่ส่งทั้งหมด</div></div></div>
+      <div class="card stat"><div class="ci" style="background:var(--orange)">⏱</div><div><div class="n">5</div><div class="l">รอตรวจสอบ</div></div></div>
+      <div class="card stat"><div class="ci" style="background:var(--green)">✓</div><div><div class="n">15</div><div class="l">ตรวจสอบแล้ว</div></div></div>
+      <div class="card stat"><div class="ci" style="background:var(--purple)">📅</div><div><div class="n">4</div><div class="l">กิจกรรมล่าสุด</div></div></div>
+    </div>
+    <div class="row">
+      <div style="flex:2">
+        <h3 style="margin:4px 0 12px">ภารกิจแนะนำวันนี้</h3>
+        <div class="grid3" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+          <div class="card" style="padding:14px;text-align:center;cursor:pointer" data-go="add"><div style="font-size:22px;color:var(--blue)">⊕</div><b style="font-size:12.5px">เพิ่มสนามใหม่</b></div>
+          <div class="card" style="padding:14px;text-align:center;cursor:pointer" data-go="verify"><div style="font-size:22px;color:var(--blue)">🔍</div><b style="font-size:12.5px">ตรวจสอบข้อมูล</b></div>
+          <div class="card" style="padding:14px;text-align:center;cursor:pointer" data-go="event"><div style="font-size:22px;color:var(--green)">📅</div><b style="font-size:12.5px">ส่งการแข่งขัน</b></div>
+          <div class="card" style="padding:14px;text-align:center;cursor:pointer" data-go="recommend"><div style="font-size:22px;color:var(--orange)">👥</div><b style="font-size:12.5px">แนะนำบุคคล</b></div>
+          <div class="card" style="padding:14px;text-align:center;cursor:pointer" data-go="story"><div style="font-size:22px;color:var(--purple)">🖼</div><b style="font-size:12.5px">ส่งเรื่องราว</b></div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>รายการล่าสุดของฉัน</b><span class="hint" style="color:var(--blue)">ดูทั้งหมด</span></div>
+          <table class="list">
+            <thead><tr><th>รายการ</th><th>ประเภท</th><th>วันที่ส่ง</th><th>สถานะ</th></tr></thead>
+            <tbody>
+              <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="thumb" style="width:56px;height:38px"></div><span><b>Victory Tennis Club</b><br><span class="hint">กรุงเทพมหานคร</span></span></div></td><td>สนามเทนนิส</td><td>17 พ.ค. 2567</td><td><span class="pill pend">Pending</span></td></tr>
+              <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="thumb" style="width:56px;height:38px"></div><span><b>Ace Tennis Center</b><br><span class="hint">นนทบุรี</span></span></div></td><td>สนามเทนนิส</td><td>15 พ.ค. 2567</td><td><span class="pill ok">Verified</span></td></tr>
+              <tr><td><div style="display:flex;gap:10px;align-items:center"><div class="thumb" style="width:56px;height:38px"></div><span><b>Tennis Clinic by Coach Jay</b><br><span class="hint">กรุงเทพมหานคร</span></span></div></td><td>กิจกรรม</td><td>12 พ.ค. 2567</td><td><span class="pill warn">Need Update</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div class="aside mb"><h4>📣 ประกาศจากทีม TOT</h4>
+          <div style="border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:9px"><span class="pill warn">สำคัญ</span><br><b style="font-size:13px">อัปเดตขั้นตอนการส่งข้อมูลสนาม</b><div class="hint">ตั้งแต่ 1 มิ.ย. 2567 กรุณาแนบรูปภาพหน้าสนามอย่างน้อย 4 ภาพ</div></div>
+          <div><b style="font-size:13px">กิจกรรม Tennis Community Meetup #2</b><div class="hint">ร่วมพบปะและแลกเปลี่ยนไอเดียพัฒนาเทนนิสไทย · 16 พ.ค. 2567</div></div>
+        </div>
+        <div class="aside"><h4>ขั้นตอนการทำงาน</h4>
+          <div class="chk"><b style="color:var(--blue)">1</b> <span>กรอกข้อมูลให้ครบตามหมวดหมู่</span></div>
+          <div class="chk"><b style="color:var(--blue)">2</b> <span>แนบภาพ · อัปโหลดรูปที่เกี่ยวข้อง</span></div>
+          <div class="chk"><b style="color:var(--blue)">3</b> <span>ส่งตรวจสอบ · ทีมงานตรวจความถูกต้อง</span></div>
+          <div class="chk"><b style="color:var(--green)">4</b> <span>ทีม TOT อนุมัติ · ข้อมูลเผยแพร่ในระบบ</span></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 4. ADD COURT (REAL) -->
+<section class="screen" id="add">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>เพิ่มสนามใหม่ <span class="badge-real">พัฒนาจริง</span></h2><div class="sub">ช่วยกันเก็บข้อมูลสนามเทนนิสให้ถูกต้อง ครบถ้วน เพื่อพัฒนาเทนนิสไทย</div></div><div class="who-mount"></div></div>
+    <div class="row">
+      <div style="flex:2.4">
+        <div class="stepper">
+          <div class="st act"><div class="dot">1</div><div class="cap">ข้อมูลพื้นฐาน</div></div><div class="bar act"></div>
+          <div class="st"><div class="dot">2</div><div class="cap">ข้อมูลสนาม</div></div><div class="bar"></div>
+          <div class="st"><div class="dot">3</div><div class="cap">บริการเสริม</div></div><div class="bar"></div>
+          <div class="st"><div class="dot">4</div><div class="cap">รูปภาพและสถานะ</div></div>
+        </div>
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">1</span> ข้อมูลพื้นฐาน</div>
+          <div class="grid3 mb">
+            <div><label class="f">ชื่อสนาม / คลับ <span class="req">*</span></label><input class="inp" placeholder="เช่น Victory Tennis Club"></div>
+            <div><label class="f">จังหวัด <span class="req">*</span></label><select class="inp"><option>เลือกจังหวัด</option></select></div>
+            <div><label class="f">เขต / อำเภอ <span class="req">*</span></label><select class="inp"><option>เลือกเขต / อำเภอ</option></select></div>
+          </div>
+          <div class="mb"><label class="f">ที่อยู่ <span class="req">*</span></label><input class="inp mb" placeholder="เลขที่ / หมู่บ้าน / ซอย / ถนน"><div class="grid2"><input class="inp" placeholder="ตำบล / แขวง"><input class="inp" placeholder="รหัสไปรษณีย์ เช่น 10110"></div></div>
+          <div class="grid2 mb">
+            <div><label class="f">Google Map Link</label><input class="inp" placeholder="https://maps.google.com/…"></div>
+            <div><label class="f">เบอร์โทรศัพท์ <span class="req">*</span></label><input class="inp" placeholder="เช่น 081-234-5678"></div>
+          </div>
+          <div class="grid3 mb">
+            <div><label class="f">Line ID</label><input class="inp" placeholder="เช่น @victorytennis"></div>
+            <div><label class="f">Facebook Page</label><input class="inp" placeholder="เช่น Victory Tennis Club"></div>
+            <div><label class="f">Website</label><input class="inp" placeholder="เช่น https://victorytennis.com"></div>
+          </div>
+          <div><label class="f">เวลาเปิด – ปิด <span class="req">*</span></label><div style="display:flex;gap:10px;align-items:center"><input class="inp" style="width:110px" value="06:00">–<input class="inp" style="width:110px" value="23:00"><label class="chk" style="margin:0"><input type="checkbox" checked> เปิดบริการทุกวัน</label></div></div>
+        </div>
+        <div class="acc" data-open="s2">🏟 2. ข้อมูลสนาม <span>▾</span></div>
+        <div class="card" id="s2" style="padding:20px;margin-bottom:12px;display:none">
+          <div class="grid3 mb">
+            <div><label class="f">จำนวนคอร์ต <span class="req">*</span></label><input class="inp" placeholder="เช่น 8"></div>
+            <div><label class="f">ประเภทพื้นสนาม <span class="req">*</span></label><select class="inp"><option>Hard Court</option><option>Clay</option><option>Grass</option><option>Synthetic</option></select></div>
+            <div><label class="f">Indoor / Outdoor <span class="req">*</span></label><select class="inp"><option>Outdoor</option><option>Indoor</option><option>ทั้งสองแบบ</option></select></div>
+          </div>
+          <label class="chk mb"><input type="checkbox" checked> มีไฟสนาม (เล่นกลางคืนได้)</label>
+          <label class="f">ราคาค่าสนาม (บาท/ชม.)</label>
+          <div class="grid2">
+            <div style="border:1px solid var(--line);border-radius:9px;padding:11px"><b style="font-size:12.5px">☀️ กลางวัน</b><div style="display:flex;gap:8px;align-items:center;margin-top:7px"><input class="inp" style="width:80px" value="09:00">–<input class="inp" style="width:80px" value="17:00"><input class="inp" placeholder="ราคา"></div></div>
+            <div style="border:1px solid var(--line);border-radius:9px;padding:11px"><b style="font-size:12.5px">🌙 กลางคืน</b><div style="display:flex;gap:8px;align-items:center;margin-top:7px"><input class="inp" style="width:80px" value="17:00">–<input class="inp" style="width:80px" value="23:00"><input class="inp" placeholder="ราคา"></div></div>
+          </div>
+        </div>
+        <div class="acc" data-open="s3">🛎 3. บริการเสริม <span>▾</span></div>
+        <div class="card" id="s3" style="padding:20px;margin-bottom:12px;display:none">
+          <div class="grid3">
+            <label class="chk"><input type="checkbox"> มีโค้ชสอน</label>
+            <label class="chk"><input type="checkbox"> บริการเช่าอุปกรณ์</label>
+            <label class="chk"><input type="checkbox"> ที่จอดรถเพียงพอ</label>
+            <label class="chk"><input type="checkbox"> ห้องน้ำ</label>
+            <label class="chk"><input type="checkbox"> ห้องอาบน้ำ</label>
+            <label class="chk"><input type="checkbox"> ห้องอาหาร</label>
+            <label class="chk"><input type="checkbox"> คาเฟ่</label>
+            <label class="chk"><input type="checkbox"> บริการขึ้นเอ็นไม้เทนนิส</label>
+          </div>
+        </div>
+        <div class="acc" data-open="s4">📷 4. รูปภาพและสถานะข้อมูล <span>▾</span></div>
+        <div class="card" id="s4" style="padding:20px;margin-bottom:12px;display:none">
+          <div style="border:2px dashed var(--line);border-radius:11px;padding:26px;text-align:center;color:var(--muted)">⬆️ ลากรูปมาวาง หรือ <b style="color:var(--blue)">เลือกไฟล์</b><div class="hint">ภาพถ่ายสนามที่ได้รับอนุญาต · JPG/PNG ไม่เกิน 10MB</div></div>
+          <div class="grid2" style="margin-top:12px"><div><label class="f">ผู้ส่งข้อมูล</label><input class="inp" value="ศิริลักษณ์ วงษ์ดี" disabled></div><div><label class="f">สถานะเริ่มต้น</label><input class="inp" value="Pending" disabled></div></div>
+        </div>
+        <div class="dotwrap" style="margin-top:6px"><button class="btn btn-ghost">🖹 บันทึกร่าง</button><button class="btn btn-oline">👁 ดูตัวอย่าง</button><button class="btn btn-blue" style="flex:1;justify-content:center">➤ ส่งตรวจสอบ</button></div>
+      </div>
+      <div style="flex:1">
+        <div class="aside mb"><h4>ℹ️ ข้อมูลที่ต้องเก็บ</h4>
+          <div class="chk"><span class="g">✓</span> ข้อมูลพื้นฐานของสนาม / คลับ</div>
+          <div class="chk"><span class="g">✓</span> รายละเอียดสนามและราคา</div>
+          <div class="chk"><span class="g">✓</span> บริการและสิ่งอำนวยความสะดวก</div>
+          <div class="chk"><span class="g">✓</span> รูปภาพสนามที่ชัดเจน</div>
+          <div class="chk"><span class="g">✓</span> ข้อมูลผู้ส่งและแหล่งที่มา</div>
+        </div>
+        <div class="aside mb" style="background:var(--blue-l);border-color:#CFE0FA"><h4>💡 เคล็ดลับ</h4><div class="hint" style="color:#33414F">อัปเดตข้อมูลอย่างสม่ำเสมอ เพื่อให้ผู้เล่นได้รับข้อมูลเป็นปัจจุบัน และเพิ่มโอกาสในการจอง</div></div>
+        <div class="aside" style="background:var(--green-l);border-color:#CDEBD9"><h4 style="color:var(--green)">🛡 ข้อมูลของคุณปลอดภัย</h4><div class="hint" style="color:#33414F">ข้อมูลจะถูกตรวจสอบก่อนเผยแพร่ เพื่อประโยชน์ของวงการเทนนิสไทย</div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 5. SUBMIT EVENT -->
+<section class="screen" id="event">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>ส่งการแข่งขัน / กิจกรรม <span class="badge-mock">Mockup</span></h2><div class="sub">ส่งรายละเอียดกิจกรรมหรือการแข่งขันให้ครบถ้วนและตรวจสอบได้ เพื่อเผยแพร่ในระบบ TOT</div></div><div class="who-mount"></div></div>
+    <div class="row">
+      <div style="flex:2.4">
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">1</span> รายละเอียดกิจกรรม</div>
+          <div class="grid2 mb"><div><label class="f">ชื่องาน <span class="req">*</span></label><input class="inp" placeholder="ระบุชื่องาน / กิจกรรม"></div>
+          <div><label class="f">ประเภทกิจกรรม <span class="req">*</span></label><div class="dotwrap" style="flex-wrap:wrap"><label class="chk" style="margin:0"><input type="radio" name="et" checked> การแข่งขัน</label><label class="chk" style="margin:0"><input type="radio" name="et"> Clinic</label><label class="chk" style="margin:0"><input type="radio" name="et"> Community</label><label class="chk" style="margin:0"><input type="radio" name="et"> Junior</label></div></div></div>
+          <label class="f">คำอธิบายสั้น ๆ <span class="req">*</span></label><textarea class="inp" rows="2" placeholder="อธิบายวัตถุประสงค์ รายละเอียดโดยย่อ และจุดเด่นของกิจกรรม"></textarea>
+        </div>
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">2</span> วันเวลาและสถานที่</div>
+          <div class="grid3 mb"><div><label class="f">วันที่จัด <span class="req">*</span></label><input class="inp" placeholder="วว/ดด/ปปปป"></div><div><label class="f">เวลาเริ่ม <span class="req">*</span></label><input class="inp" placeholder="HH:MM"></div><div><label class="f">เวลาสิ้นสุด <span class="req">*</span></label><input class="inp" placeholder="HH:MM"></div></div>
+          <div class="grid2 mb"><div><label class="f">สถานที่ <span class="req">*</span></label><input class="inp" placeholder="ระบุชื่อสนาม / สถานที่จัด"></div><div><label class="f">จังหวัด <span class="req">*</span></label><select class="inp"><option>เลือกจังหวัด</option></select></div></div>
+          <label class="f">Google Map link</label><input class="inp" placeholder="วางลิงก์ Google Maps ของสถานที่จัดกิจกรรม">
+        </div>
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">3</span> การสมัคร</div>
+          <div class="grid3 mb"><div><label class="f">ค่าสมัคร (บาท)</label><input class="inp" placeholder="฿ ระบุจำนวนเงิน"></div><div><label class="f">วันปิดรับสมัคร <span class="req">*</span></label><input class="inp" placeholder="วว/ดด/ปปปป"></div><div><label class="f">กลุ่มผู้เข้าร่วม <span class="req">*</span></label><select class="inp"><option>เลือกกลุ่มผู้เข้าร่วม</option></select></div></div>
+          <div class="grid2"><div><label class="f">ช่องทางสมัคร <span class="req">*</span></label><select class="inp"><option>เลือกช่องทาง</option></select></div><div><label class="f">ลิงก์สมัคร</label><input class="inp" placeholder="https://…"></div></div>
+        </div>
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">4</span> ผู้จัดและการติดต่อ</div>
+          <div class="grid2 mb"><div><label class="f">ชื่อผู้จัด <span class="req">*</span></label><input class="inp" placeholder="ระบุชื่อผู้จัด / องค์กร"></div><div><label class="f">เบอร์โทรศัพท์ <span class="req">*</span></label><input class="inp" placeholder="08X-XXX-XXXX"></div></div>
+          <div class="grid3"><input class="inp" placeholder="Line ID"><input class="inp" placeholder="Facebook Page"><input class="inp" placeholder="Website"></div>
+        </div>
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="section-title"><span class="num">5</span> สื่อประกอบ</div>
+          <div class="grid3"><div style="border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted)">🖼<br>อัปโหลดโปสเตอร์ <span class="req">*</span><br><button class="btn btn-ghost" style="margin-top:6px">เลือกไฟล์</button></div><div style="border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted)">🖼<br>รูปภาพเพิ่มเติม<br><button class="btn btn-ghost" style="margin-top:6px">เลือกไฟล์</button></div><div style="border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted)">📄<br>เอกสารประกาศ<br><button class="btn btn-ghost" style="margin-top:6px">เลือกไฟล์</button></div></div>
+        </div>
+        <div class="dotwrap"><button class="btn btn-ghost">🖹 บันทึกร่าง</button><button class="btn btn-oline">📎 แนบไฟล์เพิ่ม</button><button class="btn btn-green" style="flex:1;justify-content:center">➤ ส่งข้อมูล</button></div>
+      </div>
+      <div style="flex:1">
+        <div class="aside mb"><h4>ℹ️ ข้อมูลที่ควรมี</h4>
+          <div class="chk"><span class="g">✓</span> ชื่องาน · วันที่ · เวลา · สถานที่</div>
+          <div class="chk"><span class="g">✓</span> ประเภทกิจกรรม · กลุ่มผู้เข้าร่วม</div>
+          <div class="chk"><span class="g">✓</span> ค่าสมัคร · วันปิดรับ · ช่องทางสมัคร</div>
+          <div class="chk"><span class="g">✓</span> ชื่อและช่องทางติดต่อผู้จัด</div>
+        </div>
+        <div class="aside"><h4>ตัวอย่างโปสเตอร์ (Preview)</h4><div style="background:linear-gradient(135deg,#12327A,#1657C8);border-radius:11px;color:#fff;padding:16px;text-align:center"><b style="font-family:'Prompt'">TOT JUNIOR TENNIS</b><div style="font-size:20px;font-family:'Prompt';color:#D7F04B">CHAMPIONSHIP 2025</div><div class="hint" style="color:#cdd">25–26 พ.ค. 2567 @ Victory Tennis Club</div><div style="background:#D7F04B;color:#12327A;border-radius:50%;width:64px;height:64px;display:flex;flex-direction:column;justify-content:center;margin:10px auto;font-size:11px;font-weight:700">ค่าสมัคร<br>800฿</div></div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 6. VERIFY / COMPARE (REAL) -->
+<section class="screen" id="verify">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>ตรวจสอบ / อัปเดตข้อมูลสนาม <span class="badge-real">พัฒนาจริง</span></h2><div class="sub">ตรวจสอบความถูกต้องของข้อมูลสนามและส่งอัปเดตเข้าสู่ระบบ</div></div><div class="who-mount"></div></div>
+    <div class="dotwrap mb"><input class="inp" style="flex:2" placeholder="🔍 ค้นหาชื่อสนาม, เขต, จังหวัด, เบอร์โทร"><select class="inp" style="max-width:180px"><option>จังหวัด: กรุงเทพฯ</option></select><select class="inp" style="max-width:150px"><option>สถานะ: ทั้งหมด</option></select><button class="btn btn-ghost">⟳ ล้างตัวกรอง</button></div>
+    <div class="row">
+      <div style="flex:2.4">
+        <div class="card mb" style="padding:16px;display:flex;gap:14px;align-items:center"><div class="thumb" style="width:96px;height:64px"></div><div style="flex:1"><b style="font-size:16px">Victory Tennis Club</b> <span class="g" style="color:var(--green)">✓</span><div class="hint">📍 กรุงเทพมหานคร, เขตห้วยขวาง · <span class="tag">สนามเทนนิส</span></div></div><div style="text-align:right"><span class="pill pend">Pending</span><div class="hint">อัปเดตล่าสุด 17 พ.ค. 2567</div></div></div>
+        <div class="card mb" style="padding:18px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>เปรียบเทียบข้อมูล</b><label class="chk" style="margin:0"><input type="checkbox" checked> แสดงเฉพาะที่เปลี่ยนแปลง</label></div>
+          <div class="hint mb">ตรวจสอบข้อมูลเดิมและแก้ไขข้อมูลที่ต้องอัปเดต · ช่องที่ไฮไลต์คือข้อมูลที่มีการเปลี่ยนแปลง</div>
+          <table class="cmp">
+            <thead><tr><th style="width:26%">ฟิลด์</th><th style="width:37%">ข้อมูลเดิม (จากระบบ)</th><th style="width:37%;color:var(--blue)">ข้อมูลที่ตรวจสอบล่าสุด (แก้ไขได้)</th></tr></thead>
+            <tbody>
+              <tr><td>🏷 ชื่อสนาม</td><td class="old">Victory Tennis Club</td><td class="newv">Victory Tennis Club</td></tr>
+              <tr><td>📞 เบอร์โทร</td><td class="old">02-123-4567</td><td class="newv">02-123-4567</td></tr>
+              <tr><td>🕘 เวลาเปิด – ปิด</td><td class="old">06:00 – 22:00</td><td class="changed"><b class="newv">06:00 – 23:00</b> 🔶</td></tr>
+              <tr><td>💵 ราคาค่าสนาม</td><td class="old">600 – 900</td><td class="changed"><b class="newv">600 – 1,000</b> 🔶</td></tr>
+              <tr><td>🎾 จำนวนคอร์ต</td><td class="old">8 คอร์ต</td><td class="newv">8 คอร์ต</td></tr>
+              <tr><td>🟦 ประเภทพื้นสนาม</td><td class="old">Hard Court</td><td class="newv">Hard Court</td></tr>
+              <tr><td>💡 ไฟสนาม</td><td class="old">มี</td><td class="newv">มี</td></tr>
+              <tr><td>🛎 โค้ช/บริการ</td><td class="old">มีโค้ช, เช่าอุปกรณ์</td><td class="changed"><b class="newv">มีโค้ช, เช่าอุปกรณ์, ร้านอาหาร</b> 🔶</td></tr>
+              <tr><td>🔗 Google Map</td><td class="old" style="color:var(--blue)">maps.goo.gl/abc123</td><td class="newv" style="color:var(--blue)">maps.goo.gl/abc123</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card mb" style="padding:18px">
+          <b>สถานะการตรวจสอบ</b><div class="hint mb">กรุณาเลือกสถานะให้สอดคล้องกับการตรวจสอบ</div>
+          <div class="grid2" style="grid-template-columns:repeat(4,1fr)">
+            <div class="opt on" style="border-color:var(--green);box-shadow:0 0 0 2px var(--green-l)"><span class="ic" style="color:var(--green)">✓</span>ยืนยันว่าถูกต้อง</div>
+            <div class="opt"><span class="ic" style="color:var(--orange)">✎</span>มีการเปลี่ยนแปลง</div>
+            <div class="opt"><span class="ic" style="color:var(--red)">⏻</span>ปิดให้บริการ</div>
+            <div class="opt"><span class="ic" style="color:var(--orange)">⏱</span>รอตรวจสอบ</div>
+          </div>
+        </div>
+        <div class="dotwrap"><button class="btn btn-ghost">🖹 บันทึกร่าง</button><button class="btn btn-oline">✓ ยืนยันข้อมูล</button><button class="btn btn-blue" style="flex:1;justify-content:center">➤ ส่งอัปเดต</button></div>
+      </div>
+      <div style="flex:1">
+        <div class="aside mb"><h4>✅ เช็กลิสต์ก่อนส่ง</h4>
+          <div class="chk"><span style="color:var(--blue)">◉</span> ระบุวันที่ตรวจสอบ</div>
+          <div class="chk"><span style="color:var(--blue)">◉</span> แจ้งแหล่งที่มา (โทรศัพท์ / ลงพื้นที่)</div>
+          <div class="chk"><span style="color:var(--blue)">◉</span> ไม่คาดเดาข้อมูล อัปเดตเฉพาะที่ตรวจสอบได้</div>
+          <div class="chk"><span style="color:var(--blue)">◉</span> แนบภาพถ้ามี</div>
+        </div>
+        <div class="aside"><h4>ประวัติสถานะการตรวจสอบ</h4>
+          <div class="chk"><span class="pill pend">Pending</span> <span><b>17 พ.ค. 2567</b> 10:30<br><span class="hint">รอการตรวจสอบ · คุณศิริลักษณ์</span></span></div>
+          <div class="chk"><span class="pill ok">Verified</span> <span><b>12 พ.ค. 2567</b> 15:45<br><span class="hint">ยืนยันว่าถูกต้อง</span></span></div>
+          <div class="chk"><span class="pill warn">Need Update</span> <span><b>5 พ.ค. 2567</b> 09:20<br><span class="hint">ต้องอัปเดต เวลาเปิด-ปิด, ราคา</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 7. SUBMIT STORY -->
+<section class="screen" id="story">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>ส่งเรื่องราว / ภาพ <span class="badge-mock">Mockup</span></h2><div class="sub">แบ่งปันเรื่องราวดี ๆ จากชุมชนเทนนิสของคุณ เพื่อสร้างแรงบันดาลใจให้คนไทยเล่นเทนนิส</div></div><div class="who-mount"></div></div>
+    <div class="row">
+      <div style="flex:2.4">
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">1</span> ข้อมูลเรื่องราว</div>
+          <label class="f">หัวข้อเรื่อง <span class="req">*</span></label><input class="inp mb" placeholder="พิมพ์หัวข้อเรื่องของคุณ">
+          <label class="f">หมวดหมู่ <span class="req">*</span></label>
+          <div class="dotwrap mb" style="flex-wrap:wrap"><span class="opt on" style="padding:8px 14px">👥 ชุมชนเทนนิส</span><span class="opt" style="padding:8px 14px">🏟 สนาม</span><span class="opt" style="padding:8px 14px">🏅 นักกีฬา</span><span class="opt" style="padding:8px 14px">👤 โค้ช</span><span class="opt" style="padding:8px 14px">📅 กิจกรรม</span><span class="opt" style="padding:8px 14px">❤️ แรงบันดาลใจ</span></div>
+          <div class="grid2"><div><label class="f">จังหวัด / พื้นที่ <span class="req">*</span></label><select class="inp"><option>เลือกจังหวัด</option></select></div><div><label class="f">สนามหรือสถานที่เกี่ยวข้อง</label><input class="inp" placeholder="ค้นหาหรือระบุชื่อสนาม (ถ้ามี)"></div></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">2</span> เนื้อหา</div>
+          <div class="grid2"><div><label class="f">บทสรุปสั้น <span class="req">*</span></label><textarea class="inp" rows="5" placeholder="สรุปเรื่องราวของคุณใน 1-2 ประโยค (สำหรับแสดงในหน้ารายการ)"></textarea></div>
+          <div><label class="f">รายละเอียดเรื่องราว <span class="req">*</span></label><div style="border:1px solid var(--line);border-radius:9px;padding:6px 9px;font-size:12px;color:var(--muted);margin-bottom:-1px">Paragraph · <b>B</b> <i>I</i> <u>U</u> · ≣ · 🔗 🖼</div><textarea class="inp" rows="4" style="border-radius:0 0 9px 9px" placeholder="เล่าเรื่องราวของคุณให้ละเอียด…"></textarea></div></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">3</span> สื่อประกอบ</div>
+          <div style="border:2px dashed var(--line);border-radius:11px;padding:22px;text-align:center;color:var(--muted)">☁️ ลากและวางรูปภาพที่นี่ หรือ <button class="btn btn-ghost">เลือกไฟล์</button><div class="hint">JPG, PNG, WebP (สูงสุด 10 ไฟล์)</div></div>
+          <div class="grid3" style="grid-template-columns:repeat(4,1fr);margin-top:12px"><div class="thumb"></div><div class="thumb"></div><div class="thumb"></div><div class="thumb"></div></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">4</span> แหล่งที่มาและสิทธิ์การใช้งาน</div>
+          <div class="grid2 mb"><div><label class="f">ชื่อผู้ถ่าย / เจ้าของเนื้อหา <span class="req">*</span></label><input class="inp" placeholder="เช่น ศิริลักษณ์ วงษ์ดี"></div><div><label class="f">ได้รับอนุญาตหรือไม่ <span class="req">*</span></label><div class="dotwrap"><label class="chk" style="margin:0"><input type="radio" name="perm" checked> ได้รับอนุญาตแล้ว</label><label class="chk" style="margin:0"><input type="radio" name="perm"> ยังไม่ได้รับอนุญาต</label></div></div></div>
+          <div class="grid2"><input class="inp" placeholder="แหล่งที่มา (ถ้ามี)"><input class="inp" placeholder="เครดิตที่ต้องการให้แสดง"></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">5</span> คำแนะนำการเผยแพร่</div>
+          <label class="f">แท็ก</label><div class="mb"><span class="tag">เยาวชน ✕</span><span class="tag">คลินิกเทนนิส ✕</span><span class="tag">ชุมชนเทนนิส ✕</span></div>
+          <label class="f">สถานะการเผยแพร่</label><div class="dotwrap"><span class="opt on" style="border-color:var(--green);box-shadow:0 0 0 2px var(--green-l);padding:8px 14px">✓ พร้อมเผยแพร่</span><span class="opt" style="padding:8px 14px">รอตรวจสอบ</span><span class="opt" style="padding:8px 14px">ร่าง</span></div>
+        </div>
+        <div class="dotwrap"><button class="btn btn-ghost">🖹 บันทึกร่าง</button><button class="btn btn-oline">👁 ดูตัวอย่างบทความ</button><button class="btn btn-blue" style="flex:1;justify-content:center">➤ ส่งให้ทีมตรวจสอบ</button></div>
+      </div>
+      <div style="flex:1">
+        <div class="aside mb"><h4>💡 แนวทางเนื้อหาที่ดี</h4>
+          <div class="chk"><span class="g">✓</span> เล่าเรื่องจริงจากประสบการณ์ของคุณ</div>
+          <div class="chk"><span class="g">✓</span> ใช้ภาษาสุภาพ และเข้าใจง่าย</div>
+          <div class="chk"><span class="g">✓</span> ระบุแหล่งที่มาและสื่อประกอบ</div>
+          <div class="chk"><span class="g">✓</span> เคารพลิขสิทธิ์ ขออนุญาตก่อนเผยแพร่</div>
+        </div>
+        <div class="aside"><h4>ตัวอย่างการแสดงผลเมื่อเผยแพร่</h4><div class="thumb" style="height:110px;border-radius:10px;margin-bottom:8px"></div><b style="font-size:14px">กิจกรรมคลินิกเทนนิสเยาวชน สร้างฝัน สู่การแข่งขัน</b><div class="hint">📍 กรุงเทพมหานคร · Victory Tennis Club</div><div class="hint" style="margin-top:6px">❤️ 128 · 💬 12 · ↗ 8</div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 8. RECOMMEND -->
+<section class="screen" id="recommend">
+  <div class="console"><div class="side-mount"></div><div class="main">
+    <div class="topbar"><div><h2>แนะนำบุคคล / คลับ / เครือข่าย <span class="badge-mock">Mockup</span></h2><div class="sub">แนะนำบุคคล, คลับ, โค้ช, ผู้จัดการแข่งขัน หรือผู้ที่มีส่วนช่วยผลักดันวงการเทนนิสในพื้นที่ให้ทีม TOT รู้จักและเชื่อมต่อ</div></div><div class="who-mount"></div></div>
+    <div class="row">
+      <div style="flex:2.4">
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">1</span> ประเภทที่แนะนำ</div>
+          <div class="grid3" style="grid-template-columns:repeat(6,1fr)"><div class="opt on"><span class="ic">👤</span>บุคคล</div><div class="opt"><span class="ic">🏢</span>คลับ</div><div class="opt"><span class="ic">👤</span>โค้ช</div><div class="opt"><span class="ic">🎓</span>Academy</div><div class="opt"><span class="ic">🏆</span>ผู้จัดการแข่งขัน</div><div class="opt"><span class="ic">👥</span>ชุมชนเทนนิส</div></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">2</span> ข้อมูลแนะนำ</div>
+          <div class="grid2 mb"><div><label class="f">ชื่อบุคคล / ชื่อคลับ / ชื่อองค์กร <span class="req">*</span></label><input class="inp" placeholder="กรอกชื่อ-นามสกุล หรือชื่อคลับ/องค์กร"></div><div><label class="f">บทบาท / ตำแหน่ง</label><input class="inp" placeholder="เช่น ผู้จัดการคลับ, โค้ช, ผู้ประสานงาน"></div></div>
+          <div class="grid2"><div><label class="f">จังหวัด / พื้นที่ <span class="req">*</span></label><select class="inp"><option>เลือกจังหวัด</option></select></div><div><label class="f">สนามหรือองค์กรที่เกี่ยวข้อง</label><input class="inp" placeholder="เช่น Victory Tennis Club, สมาคมฯ, โรงเรียน"></div></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">3</span> ช่องทางติดต่อ</div>
+          <div class="grid3 mb"><input class="inp" placeholder="📞 เบอร์โทรศัพท์"><input class="inp" placeholder="🟢 Line ID"><input class="inp" placeholder="📘 Facebook"></div>
+          <div class="grid3"><input class="inp" placeholder="📷 Instagram"><input class="inp" placeholder="🌐 Website"><input class="inp" placeholder="✉️ อีเมล"></div>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">4</span> เหตุผลในการแนะนำ</div>
+          <textarea class="inp" rows="3" placeholder="อธิบายเหตุผลที่แนะนำบุคคล/คลับนี้ จุดเด่น สิ่งที่น่าร่วมงาน หรือคุณค่าที่มีต่อวงการเทนนิส"></textarea>
+        </div>
+        <div class="card mb" style="padding:20px">
+          <div class="section-title"><span class="num">5</span> ความเกี่ยวข้องและการยินยอม</div>
+          <div class="grid3"><div><label class="f">คุณรู้จักผ่านทางใด <span class="req">*</span></label><select class="inp"><option>เลือกความสัมพันธ์</option></select></div><div><label class="f">ได้รับอนุญาตให้แนะนำหรือไม่ <span class="req">*</span></label><div class="dotwrap"><label class="chk" style="margin:0"><input type="radio" name="rperm" checked> ได้แล้ว</label><label class="chk" style="margin:0"><input type="radio" name="rperm"> ยังไม่ได้</label></div></div><div><label class="f">หมายเหตุเพิ่มเติม</label><input class="inp" placeholder="ข้อมูลเพิ่มเติม (ถ้ามี)"></div></div>
+        </div>
+        <div class="dotwrap"><button class="btn btn-ghost">🖹 บันทึกร่าง</button><button class="btn btn-blue" style="flex:1;justify-content:center">➤ ส่งให้ทีม TOT</button></div>
+      </div>
+      <div style="flex:1">
+        <div class="aside"><h4 style="color:var(--blue)">เหมาะสำหรับการเชื่อมเครือข่าย</h4>
+          <div class="chk"><span class="g">🛡</span> <span><b>แนะนำข้อมูลที่เชื่อถือได้</b><br><span class="hint">กรอกข้อมูลให้ครบถ้วนและถูกต้อง</span></span></div>
+          <div class="chk"><span style="color:var(--orange)">🤝</span> <span><b>ไม่รับปากแทน TOT</b><br><span class="hint">การแนะนำเป็นเพียงการเชื่อมต่อ ทีม TOT จะติดต่อโดยตรงอีกครั้ง</span></span></div>
+          <div class="chk"><span style="color:var(--blue)">👤</span> <span><b>ระบุความสัมพันธ์ให้ชัดเจน</b><br><span class="hint">ช่วยให้เข้าใจบริบทและความน่าเชื่อถือ</span></span></div>
+          <div class="chk"><span class="g">🔒</span> <span><b>ข้อมูลของคุณปลอดภัย</b></span></div>
+        </div>
+        <div class="aside" style="margin-top:14px"><h4>❓ ต้องการความช่วยเหลือ?</h4><div class="hint">📧 fa-support@tottennis.or.th<br>📞 02-123-4567<br>🕘 จันทร์ – ศุกร์ 09:00 – 17:00 น.</div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<script>
+// inject console shell (sidebar + who) into each console screen
+const side = document.getElementById('tpl-side').innerHTML;
+const who = document.getElementById('tpl-who').innerHTML;
+document.querySelectorAll('.side-mount').forEach(m=>m.outerHTML=side);
+document.querySelectorAll('.who-mount').forEach(m=>m.innerHTML=who);
+// screen switching
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('show',s.id===id));
+  document.querySelectorAll('.switch button').forEach(b=>b.classList.toggle('active',b.dataset.s===id));
+  document.querySelectorAll('.side a').forEach(a=>a.classList.toggle('on',a.dataset.go===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.switch button').forEach(b=>b.onclick=()=>go(b.dataset.s));
+document.body.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);}});
+// accordion in add-court
+document.querySelectorAll('.acc[data-open]').forEach(a=>a.onclick=()=>{const el=document.getElementById(a.dataset.open);el.style.display=el.style.display==='none'?'block':'none';});
+</script>
+</body>
+</html>
