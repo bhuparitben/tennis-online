@@ -1,0 +1,511 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum AmbassadorStatus {
+  pending
+  approved
+  rejected
+}
+
+enum CourtStatus {
+  pending
+  verified
+  approved
+  need_update
+  closed
+}
+
+enum IndoorOutdoor {
+  indoor
+  outdoor
+  both
+}
+
+enum PricingPeriod {
+  day
+  night
+}
+
+enum SubmitStatus {
+  draft
+  submitted
+}
+
+enum ReviewStatus {
+  pending
+  verified
+  need_update
+  approved
+  rejected
+}
+
+enum AdminChoice {
+  old
+  new
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  need_update
+}
+
+enum EventStatus {
+  draft
+  pending
+  published
+  cancelled
+}
+
+enum StoryCategory {
+  news
+  story
+  tips
+  interview
+  other
+}
+
+enum StoryStatus {
+  pending
+  published
+  rejected
+}
+
+enum QAStatus {
+  pending
+  answered
+  closed
+}
+
+enum RecType {
+  person
+  club
+  coach
+  academy
+  tournament_organizer
+  community
+}
+
+enum RecStatus {
+  pending
+  contacted
+  completed
+}
+
+enum MatchStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+// ============================================================
+// REFERENCE TABLES (blue)
+// ============================================================
+
+model Province {
+  id      Int    @id @default(autoincrement())
+  name_th String @db.VarChar(100)
+  name_en String @db.VarChar(100)
+  region  String @db.VarChar(50)
+
+  districts       District[]
+  ambassadors     Ambassador[]
+  courts          Court[]
+  events          Event[]
+  stories         Story[]
+  rankings        Ranking[]
+  qaThreads       QaThread[]
+  recommendations Recommendation[]
+
+  @@map("provinces")
+}
+
+model District {
+  id          Int    @id @default(autoincrement())
+  province_id Int
+  name_th     String @db.VarChar(100)
+
+  province Province @relation(fields: [province_id], references: [id])
+  courts   Court[]
+
+  @@map("districts")
+}
+
+model SurfaceType {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(50)
+
+  courts Court[]
+
+  @@map("surface_types")
+}
+
+// ============================================================
+// USER TABLES (purple)
+// ============================================================
+
+model Admin {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(150)
+  password_hash String   @db.VarChar(255)
+  created_at    DateTime @default(now()) @db.Timestamptz
+
+  approvedAmbassadors Ambassador[]      @relation("ApprovedBy")
+  reviewedSubmissions CourtSubmission[] @relation("ReviewedBy")
+  createdNews         News[]
+
+  @@map("admins")
+}
+
+model Ambassador {
+  id               Int              @id @default(autoincrement())
+  full_name        String           @db.VarChar(150)
+  province_id      Int
+  district_zone    String?          @db.VarChar(100)
+  tennis_role      String?          @db.VarChar(50)
+  phone            String?          @db.VarChar(20)
+  line_id          String?          @db.VarChar(100)
+  email            String?          @unique @db.VarChar(150)
+  password_hash    String?          @db.VarChar(255)
+  consent_accepted Boolean          @default(false)
+  status           AmbassadorStatus @default(pending)
+  note             String?          @db.Text
+  approved_by      Int?
+  approved_at      DateTime?        @db.Timestamptz
+  created_at       DateTime         @default(now()) @db.Timestamptz
+
+  province      Province            @relation(fields: [province_id], references: [id])
+  approvedBy    Admin?              @relation("ApprovedBy", fields: [approved_by], references: [id])
+  courts        Court[]
+  submissions   CourtSubmission[]
+  verifications CourtVerification[]
+  imageUploads  CourtImage[]
+
+  @@map("ambassadors")
+}
+
+// ============================================================
+// COURT DOMAIN TABLES (green)
+// ============================================================
+
+model Court {
+  id              Int           @id @default(autoincrement())
+  name            String        @db.VarChar(200)
+  province_id     Int
+  district_id     Int?
+  address_line    String?       @db.VarChar(300)
+  subdistrict     String?       @db.VarChar(100)
+  postal_code     String?       @db.VarChar(10)
+  google_map_link String?       @db.VarChar(500)
+  phone           String?       @db.VarChar(20)
+  line_id         String?       @db.VarChar(100)
+  facebook_page   String?       @db.VarChar(200)
+  website         String?       @db.VarChar(200)
+  open_time       String?       @db.VarChar(5)  // "HH:MM"
+  close_time      String?       @db.VarChar(5)
+  open_daily      Boolean       @default(false)
+  num_courts      Int?
+  surface_type_id Int?
+  indoor_outdoor  IndoorOutdoor @default(outdoor)
+  has_lights      Boolean       @default(false)
+  submitted_by    Int
+  status          CourtStatus   @default(pending)
+  is_published    Boolean       @default(false)
+  created_at      DateTime      @default(now()) @db.Timestamptz
+  updated_at      DateTime      @updatedAt @db.Timestamptz
+
+  province    Province    @relation(fields: [province_id], references: [id])
+  district    District?   @relation(fields: [district_id], references: [id])
+  surfaceType SurfaceType? @relation(fields: [surface_type_id], references: [id])
+  submittedBy Ambassador  @relation(fields: [submitted_by], references: [id])
+
+  pricing            CourtPricing[]
+  amenities          CourtAmenity?
+  images             CourtImage[]
+  submissions        CourtSubmission[]  @relation("CourtSubmissions")
+  matchedSubmissions CourtSubmission[]  @relation("MatchedCourtSubmissions")
+  verifications      CourtVerification[]
+  relatedStories     Story[]
+
+  @@map("courts")
+}
+
+model CourtPricing {
+  id        Int           @id @default(autoincrement())
+  court_id  Int
+  period    PricingPeriod
+  time_from String        @db.VarChar(5)
+  time_to   String        @db.VarChar(5)
+  price     Decimal       @db.Decimal(10, 2)
+
+  court Court @relation(fields: [court_id], references: [id], onDelete: Cascade)
+
+  @@map("court_pricing")
+}
+
+model CourtAmenity {
+  court_id           Int     @id
+  has_coach          Boolean @default(false)
+  equipment_rental   Boolean @default(false)
+  parking_sufficient Boolean @default(false)
+  has_restroom       Boolean @default(false)
+  has_shower         Boolean @default(false)
+  has_restaurant     Boolean @default(false)
+  has_cafe           Boolean @default(false)
+  has_stringing      Boolean @default(false)
+
+  court Court @relation(fields: [court_id], references: [id], onDelete: Cascade)
+
+  @@map("court_amenities")
+}
+
+model CourtImage {
+  id          Int      @id @default(autoincrement())
+  court_id    Int
+  url         String   @db.VarChar(500)
+  caption     String?  @db.VarChar(200)
+  is_approved Boolean  @default(false)
+  uploaded_by Int
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  court      Court      @relation(fields: [court_id], references: [id], onDelete: Cascade)
+  uploadedBy Ambassador @relation(fields: [uploaded_by], references: [id])
+
+  @@map("court_images")
+}
+
+// ============================================================
+// SUBMISSION / VERIFICATION TABLES (orange)
+// ============================================================
+
+model CourtSubmission {
+  id               Int          @id @default(autoincrement())
+  court_id         Int?
+  matched_court_id Int?
+  ambassador_id    Int
+  payload_json     Json
+  is_duplicate     Boolean      @default(false)
+  submit_status    SubmitStatus @default(draft)
+  review_status    ReviewStatus @default(pending)
+  reviewed_by      Int?
+  reviewed_at      DateTime?    @db.Timestamptz
+  review_note      String?      @db.Text
+  created_at       DateTime     @default(now()) @db.Timestamptz
+
+  court        Court?       @relation("CourtSubmissions", fields: [court_id], references: [id])
+  matchedCourt Court?       @relation("MatchedCourtSubmissions", fields: [matched_court_id], references: [id])
+  ambassador   Ambassador   @relation(fields: [ambassador_id], references: [id])
+  reviewedBy   Admin?       @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+
+  fieldChanges  CourtFieldChange[]
+  verifications CourtVerification[]
+
+  @@map("court_submissions")
+}
+
+model CourtFieldChange {
+  id            Int          @id @default(autoincrement())
+  submission_id Int
+  field_name    String       @db.VarChar(100)
+  old_value     String?      @db.Text
+  new_value     String?      @db.Text
+  is_changed    Boolean      @default(false)
+  admin_choice  AdminChoice?
+
+  submission CourtSubmission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@map("court_field_changes")
+}
+
+model CourtVerification {
+  id            Int                @id @default(autoincrement())
+  court_id      Int
+  submission_id Int?
+  status        VerificationStatus @default(pending)
+  note          String?            @db.Text
+  verified_by   Int?
+  verified_at   DateTime?          @db.Timestamptz
+
+  court      Court            @relation(fields: [court_id], references: [id])
+  submission CourtSubmission? @relation(fields: [submission_id], references: [id])
+  verifiedBy Ambassador?      @relation(fields: [verified_by], references: [id])
+
+  @@map("court_verifications")
+}
+
+// ============================================================
+// CONTENT / MOCKUP TABLES (pink)
+// ============================================================
+
+model Event {
+  id                Int         @id @default(autoincrement())
+  name              String      @db.VarChar(200)
+  event_type        String      @db.VarChar(50)
+  description       String?     @db.Text
+  event_date        DateTime    @db.Date
+  start_time        String?     @db.VarChar(5)
+  end_time          String?     @db.VarChar(5)
+  venue_name        String?     @db.VarChar(200)
+  province_id       Int?
+  google_map_link   String?     @db.VarChar(500)
+  fee               Decimal?    @db.Decimal(10, 2)
+  register_deadline DateTime?   @db.Date
+  participant_group String?     @db.VarChar(100)
+  register_channel  String?     @db.VarChar(100)
+  register_link     String?     @db.VarChar(500)
+  organizer_name    String?     @db.VarChar(150)
+  organizer_phone   String?     @db.VarChar(20)
+  poster_url        String?     @db.VarChar(500)
+  status            EventStatus @default(draft)
+  submitted_by      Int?
+  created_at        DateTime    @default(now()) @db.Timestamptz
+
+  province Province? @relation(fields: [province_id], references: [id])
+  matches  Match[]
+
+  @@map("events")
+}
+
+model Story {
+  id               Int           @id @default(autoincrement())
+  title            String        @db.VarChar(300)
+  category         StoryCategory
+  province_id      Int?
+  related_court_id Int?
+  summary          String?       @db.VarChar(500)
+  content          String?       @db.Text
+  source_owner     String?       @db.VarChar(150)
+  has_permission   Boolean       @default(false)
+  credit           String?       @db.VarChar(200)
+  status           StoryStatus   @default(pending)
+  likes_count      Int           @default(0)
+  comments_count   Int           @default(0)
+  submitted_by     Int?
+  created_at       DateTime      @default(now()) @db.Timestamptz
+
+  province     Province? @relation(fields: [province_id], references: [id])
+  relatedCourt Court?    @relation(fields: [related_court_id], references: [id])
+  images       StoryImage[]
+
+  @@map("stories")
+}
+
+model StoryImage {
+  id       Int     @id @default(autoincrement())
+  story_id Int
+  url      String  @db.VarChar(500)
+  caption  String? @db.VarChar(200)
+
+  story Story @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@map("story_images")
+}
+
+model News {
+  id         Int      @id @default(autoincrement())
+  title      String   @db.VarChar(300)
+  body       String?  @db.Text
+  image_url  String?  @db.VarChar(500)
+  created_at DateTime @default(now()) @db.Timestamptz
+  created_by Int?
+
+  createdBy Admin? @relation(fields: [created_by], references: [id])
+
+  @@map("news")
+}
+
+model Ranking {
+  id          Int      @id @default(autoincrement())
+  player_name String   @db.VarChar(150)
+  province_id Int?
+  category    String?  @db.VarChar(50)
+  points      Int      @default(0)
+  rank        Int?
+  updated_at  DateTime @updatedAt @db.Timestamptz
+
+  province Province? @relation(fields: [province_id], references: [id])
+
+  @@map("rankings")
+}
+
+model QaThread {
+  id          Int      @id @default(autoincrement())
+  question    String   @db.Text
+  asker_name  String?  @db.VarChar(150)
+  province_id Int?
+  answer      String?  @db.Text
+  answered_by Int?
+  status      QAStatus @default(pending)
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  province Province? @relation(fields: [province_id], references: [id])
+
+  @@map("qa_threads")
+}
+
+model Recommendation {
+  id             Int       @id @default(autoincrement())
+  rec_type       RecType
+  name           String    @db.VarChar(150)
+  role_title     String?   @db.VarChar(100)
+  province_id    Int?
+  related_venue  String?   @db.VarChar(200)
+  phone          String?   @db.VarChar(20)
+  line_id        String?   @db.VarChar(100)
+  facebook       String?   @db.VarChar(200)
+  instagram      String?   @db.VarChar(200)
+  website        String?   @db.VarChar(200)
+  email          String?   @db.VarChar(150)
+  reason         String?   @db.Text
+  relationship   String?   @db.VarChar(100)
+  has_permission Boolean   @default(false)
+  submitted_by   Int?
+  status         RecStatus @default(pending)
+  created_at     DateTime  @default(now()) @db.Timestamptz
+
+  province Province? @relation(fields: [province_id], references: [id])
+
+  @@map("recommendations")
+}
+
+model Match {
+  id           Int         @id @default(autoincrement())
+  event_id     Int?
+  player1      String      @db.VarChar(150)
+  player2      String      @db.VarChar(150)
+  scheduled_at DateTime?   @db.Timestamptz
+  court_venue  String?     @db.VarChar(200)
+  status       MatchStatus @default(scheduled)
+
+  event  Event?       @relation(fields: [event_id], references: [id])
+  scores MatchScore[]
+
+  @@map("matches")
+}
+
+model MatchScore {
+  id         Int      @id @default(autoincrement())
+  match_id   Int
+  set_no     Int
+  p1_games   Int      @default(0)
+  p2_games   Int      @default(0)
+  is_live    Boolean  @default(false)
+  updated_at DateTime @updatedAt @db.Timestamptz
+
+  match Match @relation(fields: [match_id], references: [id], onDelete: Cascade)
+
+  @@map("match_scores")
+}

@@ -8,9 +8,19 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w tennis-online\" \"npm run dev -w @tennis-online/api\"",
     "dev:web": "npm run dev -w tennis-online",
-    "dev:api": "npm run dev -w @tennis-online/api"
+    "dev:api": "npm run dev -w @tennis-online/api",
+    "db:migrate": "prisma migrate dev --schema ./prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:generate": "prisma generate --schema ./prisma/schema.prisma",
+    "db:studio": "prisma studio --schema ./prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema ./prisma/schema.prisma --force"
+  },
+  "prisma": {
+    "schema": "./prisma/schema.prisma"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "prisma": "^6.0.0",
+    "tsx": "^4.19.0"
   }
 }
