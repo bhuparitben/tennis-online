@@ -1,0 +1,16 @@
+{
+  "name": "tennis-online-monorepo",
+  "private": true,
+  "workspaces": [
+    "tennis-online",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w tennis-online\" \"npm run dev -w @tennis-online/api\"",
+    "dev:web": "npm run dev -w tennis-online",
+    "dev:api": "npm run dev -w @tennis-online/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

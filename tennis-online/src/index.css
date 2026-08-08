@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Prompt:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ===== Tennis Online Design Tokens ===== */
+:root {
+  --color-primary: #1a4f8c;      /* TOT blue */
+  --color-primary-dark: #153e70;
+  --color-primary-light: #e8f0fa;
+  --color-success: #2e7d32;      /* TOT green */
+  --color-success-light: #e8f5e9;
+  --color-warning: #f57c00;
+  --color-warning-light: #fff3e0;
+  --color-danger: #c62828;
+  --color-danger-light: #ffebee;
+  --color-ink: #1a1a2e;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-bg: #f5f6fa;
+  --color-surface: #ffffff;
+  --sidebar-width: 240px;
+  --topbar-height: 60px;
+  --font-thai: 'Sarabun', sans-serif;
+  --font-heading: 'Prompt', sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-thai);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
