@@ -1,22 +1,56 @@
-function App() {
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/layout/ProtectedRoute'
+
+// Pages
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/public/SignupPage'
+import DashboardPage from './pages/ambassador/DashboardPage'
+import AddCourtPage from './pages/ambassador/AddCourtPage'
+import VerifyDuplicatePage from './pages/ambassador/VerifyDuplicatePage'
+import SubmitEventPage from './pages/ambassador/SubmitEventPage'
+import SubmitStoryPage from './pages/ambassador/SubmitStoryPage'
+import RecommendPage from './pages/ambassador/RecommendPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminSubmissionsPage from './pages/admin/AdminSubmissionsPage'
+import ProfilePage from './pages/ProfilePage'
+
+export default function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h1
-          className="text-4xl font-bold"
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-primary)' }}
-        >
-          🎾 Tennis Online
-        </h1>
-        <p className="mt-2" style={{ color: 'var(--color-muted)' }}>
-          แพลตฟอร์มข้อมูลสนามเทนนิสไทย
-        </p>
-        <p className="mt-4 text-sm" style={{ color: 'var(--color-muted)' }}>
-          Phase 0 — Monorepo setup complete
-        </p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Public */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* Shared — any signed-in role */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
+
+          {/* Ambassador routes */}
+          <Route element={<ProtectedRoute role="ambassador" />}>
+            <Route path="/ambassador/dashboard" element={<DashboardPage />} />
+            <Route path="/ambassador/courts/add" element={<AddCourtPage />} />
+            <Route path="/ambassador/courts/verify" element={<VerifyDuplicatePage />} />
+            <Route path="/ambassador/events/submit" element={<SubmitEventPage />} />
+            <Route path="/ambassador/stories/submit" element={<SubmitStoryPage />} />
+            <Route path="/ambassador/recommend" element={<RecommendPage />} />
+          </Route>
+
+          {/* Admin routes */}
+          <Route element={<ProtectedRoute role="admin" />}>
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
+            <Route path="/admin/submissions/:id" element={<VerifyDuplicatePage />} />
+          </Route>
+
+          {/* Fallback */}
+          <Route path="/" element={<Navigate to="/ambassador/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
-
-export default App

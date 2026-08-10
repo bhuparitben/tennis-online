@@ -6,6 +6,15 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { requireAuth, requireRole } from './middleware/auth.js';
 
+// Keep the process alive even if an async route throws without try/catch.
+// Each such error still logs clearly so it's not silently swallowed.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,7 +31,13 @@ const app = express();
 const PORT = process.env.PORT ?? 3001;
 
 // ===== Middleware =====
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+// Allow any localhost port in development (Vite may use 5173, 5174, 5175, etc.)
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.CORS_ORIGIN ?? 'https://tennis-online.th'
+    : /^http:\/\/localhost(:\d+)?$/,
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -69,9 +84,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/provinces', referenceRoutes);
-app.use('/api/districts', referenceRoutes);
-app.use('/api/surface-types', referenceRoutes);
+// referenceRoutes declares its own /provinces, /districts and /surface-types
+// paths, so it mounts once at /api — mounting it per-path nested them into
+// /api/provinces/provinces and returned 404.
+app.use('/api', referenceRoutes);
 app.use('/api/courts', courtRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/ambassadors', ambassadorRoutes);
