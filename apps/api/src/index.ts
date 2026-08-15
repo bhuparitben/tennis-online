@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +41,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+// Reads the HttpOnly session cookie into req.cookies for requireAuth.
+app.use(cookieParser());
 
 // ===== Static: uploaded images =====
 const uploadsDir = path.join(__dirname, '../uploads');

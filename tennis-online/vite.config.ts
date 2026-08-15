@@ -15,6 +15,13 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // Uploaded court photos are served as static files by the API
+      // (`/uploads/...`), separately from the `/api` routes — without this
+      // the dev server has nothing at that path and every photo 404s.
+      '/uploads': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })

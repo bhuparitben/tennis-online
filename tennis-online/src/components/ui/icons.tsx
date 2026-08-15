@@ -200,3 +200,11 @@ export const IconSend = make(
     <path d="M21.2 3.4 14.4 21.2l-3.9-6.9-6.9-3.9z" />
   </>,
 )
+export const IconTrash = make(
+  <>
+    <path d="M4.5 7h15" />
+    <path d="M9.5 7V4.8a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3V7" />
+    <path d="M6.3 7l.9 12.2A1.6 1.6 0 0 0 8.8 20.6h6.4a1.6 1.6 0 0 0 1.6-1.4L17.7 7" />
+    <path d="M10.2 11v6M13.8 11v6" />
+  </>,
+)

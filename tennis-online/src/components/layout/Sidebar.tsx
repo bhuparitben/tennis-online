@@ -69,6 +69,11 @@ const ADMIN_GROUPS: NavGroup[] = [
     icon: IconSearch,
     items: [{ to: '/admin/submissions', label: 'รายการส่งตรวจสอบ', icon: IconList }],
   },
+  {
+    label: 'ข้อมูลอ้างอิง',
+    icon: IconMapPin,
+    items: [{ to: '/admin/locations', label: 'จังหวัด / อำเภอ', icon: IconMapPin }],
+  },
 ]
 
 const FOOTER_ITEMS: NavItem[] = [

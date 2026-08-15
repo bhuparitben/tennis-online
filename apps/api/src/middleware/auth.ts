@@ -18,26 +18,55 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev_secret_change_in_prod';
 
+/**
+ * The session lives in an HttpOnly cookie, never in a JS-readable token, so
+ * XSS can't exfiltrate it. It carries no Max-Age — the browser drops it the
+ * moment the whole browser process closes, but keeps it alive across new
+ * tabs/reloads for as long as the browser stays open. The JWT's own `exp`
+ * (JWT_EXPIRES_IN) is the backstop for browsers whose "restore previous
+ * session" feature resurrects session cookies after a restart.
+ */
+export const AUTH_COOKIE = 'tot_session';
+
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   } as jwt.SignOptions);
 }
 
-/** Require a valid JWT — attaches req.user */
+export function setAuthCookie(res: Response, token: string): void {
+  res.cookie(AUTH_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    // No `maxAge`/`expires`: a session cookie, cleared when the browser closes.
+    path: '/',
+  });
+}
+
+export function clearAuthCookie(res: Response): void {
+  res.clearCookie(AUTH_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+}
+
+/** Require a valid session cookie — attaches req.user */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'No token provided' });
+  const token = req.cookies?.[AUTH_COOKIE];
+  if (!token) {
+    res.status(401).json({ error: 'No session' });
     return;
   }
 
   try {
-    const token = header.slice(7);
     req.user = jwt.verify(token, JWT_SECRET) as JwtPayload;
     next();
   } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    clearAuthCookie(res);
+    res.status(401).json({ error: 'Invalid or expired session' });
   }
 }
 

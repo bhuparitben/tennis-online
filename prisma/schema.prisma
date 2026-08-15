@@ -37,6 +37,14 @@ enum PricingPeriod {
   night
 }
 
+// A pricing row is either an hourly rate for a time window (period +
+// time_from/time_to apply) or a flat daily rate (they don't).
+enum PricingRateType {
+  hour
+  day
+  month
+}
+
 enum SubmitStatus {
   draft
   submitted
@@ -129,6 +137,7 @@ model Province {
   qaThreads       QaThread[]
   recommendations Recommendation[]
 
+  @@unique([name_th])
   @@map("provinces")
 }
 
@@ -140,6 +149,7 @@ model District {
   province Province @relation(fields: [province_id], references: [id])
   courts   Court[]
 
+  @@unique([province_id, name_th])
   @@map("districts")
 }
 
@@ -147,7 +157,7 @@ model SurfaceType {
   id   Int    @id @default(autoincrement())
   name String @db.VarChar(50)
 
-  courts Court[]
+  courtCounts CourtSurfaceCount[]
 
   @@map("surface_types")
 }
@@ -166,6 +176,12 @@ model Admin {
   approvedAmbassadors Ambassador[]      @relation("ApprovedBy")
   reviewedSubmissions CourtSubmission[] @relation("ReviewedBy")
   createdNews         News[]
+  // An admin can add or submit-a-duplicate-update for a court directly,
+  // bypassing the ambassador role entirely — these two back-relations mirror
+  // Court.submittedByAdmin / CourtSubmission.adminSubmitter below.
+  submittedCourts      Court[]           @relation("CourtSubmittedByAdmin")
+  submittedSubmissions CourtSubmission[] @relation("SubmittedByAdmin")
+  uploadedImages       CourtImage[]      @relation("CourtImageUploadedByAdmin")
 
   @@map("admins")
 }
@@ -217,21 +233,25 @@ model Court {
   open_time       String?       @db.VarChar(5)  // "HH:MM"
   close_time      String?       @db.VarChar(5)
   open_daily      Boolean       @default(false)
-  num_courts      Int?
-  surface_type_id Int?
   indoor_outdoor  IndoorOutdoor @default(outdoor)
   has_lights      Boolean       @default(false)
-  submitted_by    Int
+  // Exactly one of submitted_by / submitted_by_admin is set — a court comes
+  // either from an ambassador's submission or an admin adding it directly.
+  submitted_by       Int?
+  submitted_by_admin Int?
   status          CourtStatus   @default(pending)
   is_published    Boolean       @default(false)
   created_at      DateTime      @default(now()) @db.Timestamptz
   updated_at      DateTime      @updatedAt @db.Timestamptz
 
-  province    Province    @relation(fields: [province_id], references: [id])
-  district    District?   @relation(fields: [district_id], references: [id])
-  surfaceType SurfaceType? @relation(fields: [surface_type_id], references: [id])
-  submittedBy Ambassador  @relation(fields: [submitted_by], references: [id])
+  province         Province    @relation(fields: [province_id], references: [id])
+  district         District?   @relation(fields: [district_id], references: [id])
+  submittedBy      Ambassador? @relation(fields: [submitted_by], references: [id])
+  submittedByAdmin Admin?      @relation("CourtSubmittedByAdmin", fields: [submitted_by_admin], references: [id])
 
+  // Replaces a single num_courts + surface_type_id pair — a venue can mix
+  // surfaces, e.g. 2 hard courts + 3 clay courts, each counted separately.
+  surfaceCounts      CourtSurfaceCount[]
   pricing            CourtPricing[]
   amenities          CourtAmenity?
   images             CourtImage[]
@@ -243,13 +263,28 @@ model Court {
   @@map("courts")
 }
 
+model CourtSurfaceCount {
+  id              Int @id @default(autoincrement())
+  court_id        Int
+  surface_type_id Int
+  num_courts      Int
+
+  court       Court       @relation(fields: [court_id], references: [id], onDelete: Cascade)
+  surfaceType SurfaceType @relation(fields: [surface_type_id], references: [id])
+
+  @@unique([court_id, surface_type_id])
+  @@map("court_surface_counts")
+}
+
 model CourtPricing {
-  id        Int           @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   court_id  Int
-  period    PricingPeriod
-  time_from String        @db.VarChar(5)
-  time_to   String        @db.VarChar(5)
-  price     Decimal       @db.Decimal(10, 2)
+  rate_type PricingRateType @default(hour)
+  // Only meaningful when rate_type = hour; null for a flat daily rate.
+  period    PricingPeriod?
+  time_from String?         @db.VarChar(5)
+  time_to   String?         @db.VarChar(5)
+  price     Decimal         @db.Decimal(10, 2)
 
   court Court @relation(fields: [court_id], references: [id], onDelete: Cascade)
 
@@ -278,11 +313,18 @@ model CourtImage {
   url         String   @db.VarChar(500)
   caption     String?  @db.VarChar(200)
   is_approved Boolean  @default(false)
-  uploaded_by Int
+  // The photo shown first on public listings/detail pages. Enforced to be
+  // at most one per court at the application layer (see courtController.ts).
+  is_cover    Boolean  @default(false)
+  // Exactly one of uploaded_by / uploaded_by_admin is set — same
+  // ambassador-or-admin split as Court.submitted_by above.
+  uploaded_by       Int?
+  uploaded_by_admin Int?
   created_at  DateTime @default(now()) @db.Timestamptz
 
-  court      Court      @relation(fields: [court_id], references: [id], onDelete: Cascade)
-  uploadedBy Ambassador @relation(fields: [uploaded_by], references: [id])
+  court           Court       @relation(fields: [court_id], references: [id], onDelete: Cascade)
+  uploadedBy      Ambassador? @relation(fields: [uploaded_by], references: [id])
+  uploadedByAdmin Admin?      @relation("CourtImageUploadedByAdmin", fields: [uploaded_by_admin], references: [id])
 
   @@map("court_images")
 }
@@ -295,7 +337,10 @@ model CourtSubmission {
   id               Int          @id @default(autoincrement())
   court_id         Int?
   matched_court_id Int?
-  ambassador_id    Int
+  // Exactly one of ambassador_id / admin_submitter_id is set — mirrors
+  // Court.submitted_by / submitted_by_admin above, same reasoning.
+  ambassador_id      Int?
+  admin_submitter_id Int?
   payload_json     Json
   is_duplicate     Boolean      @default(false)
   submit_status    SubmitStatus @default(draft)
@@ -305,10 +350,11 @@ model CourtSubmission {
   review_note      String?      @db.Text
   created_at       DateTime     @default(now()) @db.Timestamptz
 
-  court        Court?       @relation("CourtSubmissions", fields: [court_id], references: [id])
-  matchedCourt Court?       @relation("MatchedCourtSubmissions", fields: [matched_court_id], references: [id])
-  ambassador   Ambassador   @relation(fields: [ambassador_id], references: [id])
-  reviewedBy   Admin?       @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+  court          Court?      @relation("CourtSubmissions", fields: [court_id], references: [id])
+  matchedCourt   Court?      @relation("MatchedCourtSubmissions", fields: [matched_court_id], references: [id])
+  ambassador     Ambassador? @relation(fields: [ambassador_id], references: [id])
+  adminSubmitter Admin?      @relation("SubmittedByAdmin", fields: [admin_submitter_id], references: [id])
+  reviewedBy     Admin?      @relation("ReviewedBy", fields: [reviewed_by], references: [id])
 
   fieldChanges  CourtFieldChange[]
   verifications CourtVerification[]

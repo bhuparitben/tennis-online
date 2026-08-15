@@ -3,6 +3,33 @@ export interface Province {
   name_th: string
   name_en: string
   region: string
+  /** Present on the admin list endpoint only. */
+  _count?: { districts: number }
+}
+
+/** Minimal court info embedded in a submission list row (name + thumbnail). */
+export interface SubmissionCourtCard {
+  id: number
+  name: string
+  province: { name_th: string } | null
+  images: { url: string }[]
+}
+
+/** A row from GET /api/submissions — one row per court add/update action. */
+export interface SubmissionListItem {
+  id: number
+  is_duplicate: boolean
+  submit_status: 'draft' | 'submitted'
+  review_status: 'pending' | 'verified' | 'need_update' | 'approved' | 'rejected'
+  created_at: string
+  reviewed_at: string | null
+  /** Set when the submission created a brand-new court. */
+  court: SubmissionCourtCard | null
+  /** Set when the submission was matched against an existing court (is_duplicate). */
+  matchedCourt: SubmissionCourtCard | null
+  /** Exactly one of ambassador / adminSubmitter is set. */
+  ambassador: { id: number; full_name: string } | null
+  adminSubmitter: { id: number; name: string } | null
 }
 
 export interface District {
@@ -17,9 +44,11 @@ export interface SurfaceType {
 }
 
 export interface PricingRow {
-  period: 'day' | 'night'
-  time_from: string
-  time_to: string
+  rate_type: 'hour' | 'day' | 'month'
+  /** Only meaningful when rate_type === 'hour'. */
+  period?: 'day' | 'night'
+  time_from?: string
+  time_to?: string
   price: number | string
 }
 
@@ -51,15 +80,27 @@ export interface CourtFormData {
   close_time: string
   open_daily: boolean
   // Step 2 — ข้อมูลสนาม
-  num_courts: number | null
-  surface_type_id: number | null
+  // A venue can mix surfaces — e.g. 2 hard + 3 clay courts — so this is a
+  // list of (surface type, count) rows rather than one type + one total.
+  surface_counts: SurfaceCountInput[]
   indoor_outdoor: 'indoor' | 'outdoor' | 'both'
   has_lights: boolean
   pricing: PricingRow[]
   // Step 3 — บริการเสริม
   amenities: CourtAmenities
   // Step 4 — รูปภาพ
-  image_urls: string[]
+  images: CourtImageInput[]
+}
+
+export interface SurfaceCountInput {
+  surface_type_id: number
+  num_courts: number
+}
+
+export interface CourtImageInput {
+  url: string
+  /** The photo shown first on listings — at most one per court. */
+  is_cover: boolean
 }
 
 export interface AmbassadorRow {
@@ -112,21 +153,30 @@ export interface Court {
   province: Province
   // Optional relations come back as null from Prisma, not undefined.
   district?: District | null
-  address_line?: string
-  phone?: string
-  line_id?: string
-  google_map_link?: string
-  open_time?: string
-  close_time?: string
+  address_line?: string | null
+  subdistrict?: string | null
+  postal_code?: string | null
+  phone?: string | null
+  line_id?: string | null
+  facebook_page?: string | null
+  website?: string | null
+  google_map_link?: string | null
+  open_time?: string | null
+  close_time?: string | null
   open_daily: boolean
-  num_courts?: number
   indoor_outdoor: string
   has_lights: boolean
-  surface_type_id?: number
+  surfaceCounts?: {
+    id: number
+    surface_type_id: number
+    num_courts: number
+    surfaceType?: { id: number; name: string }
+  }[]
   pricing: PricingRow[]
   amenities?: CourtAmenities | null
   status: string
   is_published: boolean
+  created_at?: string
 }
 
 export interface Submission {
@@ -163,7 +213,7 @@ export interface CourtWithRelations extends Court {
   district?: District | null
   pricing: PricingRow[]
   amenities?: CourtAmenities | null
-  images?: { id: number; url: string }[]
+  images?: { id: number; url: string; is_cover?: boolean; is_approved?: boolean }[]
 }
 
 export interface SubmissionDetail {
@@ -173,9 +223,16 @@ export interface SubmissionDetail {
   review_status: string
   review_note?: string | null
   created_at: string
-  ambassador: { id: number; full_name: string; province?: { name_th: string } }
+  /** Exactly one of ambassador / adminSubmitter is set. */
+  ambassador: { id: number; full_name: string; province?: { name_th: string } } | null
+  adminSubmitter: { id: number; name: string } | null
   court?: CourtWithRelations | null
   matchedCourt?: CourtWithRelations | null
   fieldChanges: FieldChange[]
   verifications: VerificationEvent[]
+}
+
+/** Whichever of ambassador / adminSubmitter is set, for display. */
+export function submitterName(s: { ambassador: { full_name: string } | null; adminSubmitter: { name: string } | null }): string {
+  return s.ambassador?.full_name ?? (s.adminSubmitter ? `${s.adminSubmitter.name} (Admin)` : 'ไม่ทราบผู้ส่ง')
 }

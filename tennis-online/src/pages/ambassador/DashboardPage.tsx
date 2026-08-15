@@ -1,13 +1,19 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import TopBar from '../../components/layout/TopBar'
 import ImagePlaceholder from '../../components/ui/ImagePlaceholder'
+import Toast from '../../components/ui/Toast'
+import Button from '../../components/ui/Button'
+import Modal from '../../components/ui/Modal'
+import api from '../../lib/apiClient'
 import type { IconProps } from '../../components/ui/icons'
+import type { SubmissionListItem } from '../../types'
 import {
-  IconFileText, IconClock, IconCheckCircle, IconCalendar, IconCalendarCheck,
+  IconFileText, IconClock, IconCheckCircle, IconCalendarCheck,
   IconPlusCircle, IconSearch, IconUsers, IconImage, IconList, IconInfo,
-  IconMegaphone, IconEdit, IconSend, IconAlert, IconChevronRight,
+  IconMegaphone, IconEdit, IconSend, IconAlert, IconChevronRight, IconTrash,
 } from '../../components/ui/icons'
 
 type Icon = ComponentType<IconProps>
@@ -18,21 +24,16 @@ const TONES = {
   amber:  { solid: '#f0a81b', soft: '#fef4e2', text: '#c9820a' },
   green:  { solid: '#1faa55', soft: '#e6f6ec', text: '#1faa55' },
   purple: { solid: '#8b5cf6', soft: '#f1ecfe', text: '#7c4ff0' },
+  red:    { solid: '#dc2626', soft: '#fde8e8', text: '#dc2626' },
   slate:  { solid: '#475569', soft: '#eef1f5', text: '#475569' },
 } as const
 type Tone = keyof typeof TONES
 
-// ===== Data =====
-const STATS: { label: string; value: number; unit: string; icon: Icon; tone: Tone }[] = [
-  { label: 'ข้อมูลที่ส่งทั้งหมด', value: 24, unit: 'รายการ', icon: IconFileText,   tone: 'blue' },
-  { label: 'รอตรวจสอบ',          value: 5,  unit: 'รายการ', icon: IconClock,      tone: 'amber' },
-  { label: 'ตรวจสอบแล้ว',        value: 15, unit: 'รายการ', icon: IconCheckCircle, tone: 'green' },
-  { label: 'กิจกรรมล่าสุด',      value: 4,  unit: 'รายการ', icon: IconCalendar,   tone: 'purple' },
-]
-
+// ===== Static content (missions / announcements / workflow are portal
+// navigation and guidance copy, not data — no DB table backs these) =====
 const MISSIONS: { to: string; icon: Icon; title: string; desc: string; tone: Tone; filled?: boolean }[] = [
   { to: '/ambassador/courts/add',     icon: IconPlusCircle,    title: 'เพิ่มสนามใหม่',        desc: 'เพิ่มข้อมูลสนามแห่งใหม่',        tone: 'blue',   filled: true },
-  { to: '/ambassador/courts/add',     icon: IconSearch,        title: 'ตรวจสอบข้อมูลสนาม',   desc: 'ช่วยตรวจสอบและอัปเดตข้อมูล',    tone: 'blue' },
+  { to: '/ambassador/courts/search',  icon: IconSearch,        title: 'ตรวจสอบข้อมูลสนาม',   desc: 'ช่วยตรวจสอบและอัปเดตข้อมูล',    tone: 'blue' },
   { to: '/ambassador/events/submit',  icon: IconCalendarCheck, title: 'ส่งการแข่งขัน/กิจกรรม', desc: 'แจ้งการแข่งขันหรือกิจกรรม',     tone: 'green' },
   { to: '/ambassador/recommend',      icon: IconUsers,         title: 'แนะนำบุคคล/คลับ',      desc: 'เชิญบุคคลหรือคลับเข้าร่วมเครือข่าย', tone: 'amber' },
   { to: '/ambassador/stories/submit', icon: IconImage,         title: 'ส่งเรื่องราว',          desc: 'แบ่งปันเรื่องราวจากสนาม',        tone: 'purple' },
@@ -40,7 +41,7 @@ const MISSIONS: { to: string; icon: Icon; title: string; desc: string; tone: Ton
 
 const SHORTCUTS: { to?: string; icon: Icon; label: string; tone: Tone; filled?: boolean }[] = [
   { to: '/ambassador/courts/add',     icon: IconPlusCircle,    label: 'เพิ่มสนามใหม่',        tone: 'blue', filled: true },
-  { to: '/ambassador/courts/add',     icon: IconSearch,        label: 'ตรวจสอบข้อมูลสนาม',   tone: 'blue' },
+  { to: '/ambassador/courts/search',  icon: IconSearch,        label: 'ตรวจสอบข้อมูลสนาม',   tone: 'blue' },
   { to: '/ambassador/events/submit',  icon: IconCalendarCheck, label: 'ส่งการแข่งขัน / กิจกรรม', tone: 'green' },
   { to: '/ambassador/recommend',      icon: IconUsers,         label: 'แนะนำบุคคล / คลับ',    tone: 'amber' },
   { to: '/ambassador/stories/submit', icon: IconImage,         label: 'ส่งเรื่องราว / ภาพ',   tone: 'purple' },
@@ -48,17 +49,14 @@ const SHORTCUTS: { to?: string; icon: Icon; label: string; tone: Tone; filled?: 
   {                                   icon: IconInfo,          label: 'คู่มือการใช้งาน',       tone: 'slate' },
 ]
 
-const RECENT = [
-  { name: 'Victory Tennis Club',       province: 'กรุงเทพมหานคร', type: 'สนามเทนนิส', date: '17 พ.ค. 2567', status: 'pending' },
-  { name: 'Ace Tennis Center',          province: 'นนทบุรี',       type: 'สนามเทนนิส', date: '15 พ.ค. 2567', status: 'approved' },
-  { name: 'Tennis Clinic by Coach Jay', province: 'กรุงเทพมหานคร', type: 'กิจกรรม',    date: '12 พ.ค. 2567', status: 'need_update' },
-  { name: 'Prime Court พระราม 9',       province: 'กรุงเทพมหานคร', type: 'สนามเทนนิส', date: '8 พ.ค. 2567',  status: 'approved' },
-]
-
-const STATUS_MAP: Record<string, { label: string; cls: string; icon: Icon }> = {
-  pending:     { label: 'Pending',     cls: 'bg-warning-light text-warning', icon: IconClock },
-  approved:    { label: 'Verified',    cls: 'bg-success-light text-success', icon: IconCheckCircle },
-  need_update: { label: 'Need Update', cls: 'bg-danger-light text-danger',   icon: IconAlert },
+// Mirrors the real ReviewStatus enum in prisma/schema.prisma — every value
+// the API can return must be covered here or a row would render unstyled.
+const STATUS_MAP: Record<SubmissionListItem['review_status'], { label: string; cls: string; icon: Icon }> = {
+  pending:     { label: 'รอตรวจสอบ',    cls: 'bg-warning-light text-warning', icon: IconClock },
+  verified:    { label: 'ยืนยันแล้ว',    cls: 'bg-blue-100 text-blue-700',     icon: IconCheckCircle },
+  need_update: { label: 'ต้องแก้ไข',     cls: 'bg-danger-light text-danger',   icon: IconAlert },
+  approved:    { label: 'อนุมัติแล้ว',   cls: 'bg-success-light text-success', icon: IconCheckCircle },
+  rejected:    { label: 'ปฏิเสธ',        cls: 'bg-danger-light text-danger',   icon: IconAlert },
 }
 
 const ANNOUNCEMENTS = [
@@ -88,6 +86,10 @@ const WORKFLOW: { n: number; icon: Icon; title: string; desc: string; tone: Tone
   { n: 3, icon: IconSend,        title: 'ส่งตรวจสอบ',    desc: 'ทีมงานตรวจสอบความถูกต้อง',       tone: 'blue' },
   { n: 4, icon: IconCheckCircle, title: 'ทีม TOT อนุมัติ', desc: 'ข้อมูลถูกเผยแพร่ในระบบ',         tone: 'green' },
 ]
+
+function apiError(err: unknown, fallback: string) {
+  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback
+}
 
 // ===== Pieces =====
 
@@ -132,7 +134,65 @@ function ToneGlyph({
 
 export default function DashboardPage() {
   const location = useLocation()
-  const successMsg = (location.state as { success?: string } | null)?.success
+  // Seeded once from the redirect state (e.g. right after saving a court) —
+  // held in its own state so the toast can be dismissed independently of
+  // location.state, which has no "consumed" concept of its own.
+  const [toastMsg, setToastMsg] = useState(
+    (location.state as { success?: string } | null)?.success ?? null,
+  )
+
+  const [submissions, setSubmissions] = useState<SubmissionListItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<SubmissionListItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<SubmissionListItem[]>('/submissions')
+      .then(({ data }) => {
+        if (!cancelled) setSubmissions(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(apiError(err, 'โหลดรายการล่าสุดไม่สำเร็จ'))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const stats = useMemo(() => {
+    const total = submissions.length
+    const pending = submissions.filter((s) => s.review_status === 'pending').length
+    const reviewed = submissions.filter((s) => s.review_status === 'verified' || s.review_status === 'approved').length
+    const needUpdate = submissions.filter((s) => s.review_status === 'need_update').length
+    return [
+      { label: 'ข้อมูลที่ส่งทั้งหมด', value: total,      unit: 'รายการ', icon: IconFileText,    tone: 'blue' as Tone },
+      { label: 'รอตรวจสอบ',          value: pending,    unit: 'รายการ', icon: IconClock,       tone: 'amber' as Tone },
+      { label: 'ตรวจสอบแล้ว',        value: reviewed,   unit: 'รายการ', icon: IconCheckCircle, tone: 'green' as Tone },
+      { label: 'ต้องแก้ไข',          value: needUpdate, unit: 'รายการ', icon: IconAlert,       tone: 'red' as Tone },
+    ]
+  }, [submissions])
+
+  const recent = submissions.slice(0, 4)
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await api.delete(`/submissions/${deleteTarget.id}`)
+      setSubmissions((prev) => prev.filter((s) => s.id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err) {
+      setError(apiError(err, 'ลบไม่สำเร็จ'))
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <AppLayout>
@@ -144,15 +204,11 @@ export default function DashboardPage() {
         messages={1}
       />
 
-      {successMsg && (
-        <div className="mb-5 rounded-xl bg-success-light border border-success/20 px-4 py-3 text-sm text-success flex items-center gap-2">
-          <IconCheckCircle className="w-5 h-5 shrink-0" /> {successMsg}
-        </div>
-      )}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
 
       {/* ===== Stats ===== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <div
             key={s.label}
             className="bg-surface rounded-2xl border border-border p-3 sm:p-4 flex items-center gap-3"
@@ -171,7 +227,7 @@ export default function DashboardPage() {
                 className="text-2xl font-bold text-ink leading-none mt-0.5"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
-                {s.value}
+                {loading ? '—' : s.value}
               </p>
               <p className="text-[10px] text-muted mt-0.5">{s.unit}</p>
             </div>
@@ -219,51 +275,130 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-ink" style={{ fontFamily: 'var(--font-heading)' }}>
                 รายการล่าสุดของฉัน
               </p>
-              <span className="text-xs text-primary hover:underline cursor-pointer">ดูทั้งหมด</span>
+              {/* No standalone "all submissions" page exists yet for
+                  ambassadors, so this stays a plain count rather than a
+                  link that would 404. */}
+              {submissions.length > 4 && (
+                <span className="text-xs text-muted">ทั้งหมด {submissions.length} รายการ</span>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted bg-bg/60 border-y border-border">
-                    <th className="px-5 py-2.5 text-left font-medium">รายการ</th>
-                    <th className="px-4 py-2.5 text-left font-medium">ประเภท</th>
-                    <th className="px-4 py-2.5 text-left font-medium">วันที่ส่ง</th>
-                    <th className="px-4 py-2.5 text-left font-medium">สถานะ</th>
-                    <th className="px-4 py-2.5" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {RECENT.map((r) => {
-                    const s = STATUS_MAP[r.status]
-                    const StatusIcon = s.icon
-                    return (
-                      <tr key={r.name} className="border-b border-border last:border-0 hover:bg-bg/50 cursor-pointer group">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <ImagePlaceholder className="w-[62px] h-10 rounded-lg shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-semibold text-ink text-sm truncate">{r.name}</p>
-                              <p className="text-xs text-muted">{r.province}</p>
+
+            {error && (
+              <div className="mx-4 sm:mx-5 mb-3 rounded-xl border border-danger/20 bg-danger-light px-3 py-2 text-xs text-danger flex items-start gap-2">
+                <IconAlert className="w-4 h-4 shrink-0 mt-px" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {loading ? (
+              <p className="px-5 py-10 text-center text-sm text-muted">กำลังโหลดข้อมูล…</p>
+            ) : recent.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <p className="text-sm text-muted mb-3">ยังไม่มีรายการที่ส่งเข้ามา</p>
+                <Link
+                  to="/ambassador/courts/add"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary font-semibold hover:underline"
+                >
+                  <IconPlusCircle className="w-4 h-4" /> เพิ่มสนามแรกของคุณ
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted bg-bg/60 border-y border-border">
+                      <th className="px-5 py-2.5 text-left font-medium">รายการ</th>
+                      <th className="px-4 py-2.5 text-left font-medium">ประเภท</th>
+                      <th className="px-4 py-2.5 text-left font-medium">วันที่ส่ง</th>
+                      <th className="px-4 py-2.5 text-left font-medium">สถานะ</th>
+                      <th className="px-4 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recent.map((s) => {
+                      const card = s.court ?? s.matchedCourt
+                      const meta = STATUS_MAP[s.review_status]
+                      const StatusIcon = meta.icon
+                      const thumb = card?.images?.[0]?.url
+                      return (
+                        <tr key={s.id} className="border-b border-border last:border-0 hover:bg-bg/50 group">
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="w-[62px] h-10 rounded-lg shrink-0 object-cover bg-bg"
+                                />
+                              ) : (
+                                <ImagePlaceholder className="w-[62px] h-10 rounded-lg shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-semibold text-ink text-sm truncate">
+                                  {card?.name ?? 'ไม่พบชื่อสนาม'}
+                                </p>
+                                <p className="text-xs text-muted">{card?.province?.name_th ?? '—'}</p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">{r.type}</td>
-                        <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">{r.date}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${s.cls}`}>
-                            <StatusIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
-                            {s.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <IconChevronRight className="w-4 h-4 text-muted/60 group-hover:text-primary transition-colors inline-block" />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">
+                            {s.is_duplicate ? 'อัปเดตข้อมูลสนาม' : 'สนามใหม่'}
+                          </td>
+                          <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">
+                            {new Date(s.created_at).toLocaleDateString('th-TH', { dateStyle: 'medium' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${meta.cls}`}>
+                              <StatusIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
+                              {meta.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {(() => {
+                              const canDelete = s.review_status !== 'approved'
+                              const editHref = s.is_duplicate
+                                ? `/ambassador/submissions/${s.id}`
+                                : s.review_status === 'pending' && s.court
+                                  ? `/ambassador/courts/edit/${s.court.id}`
+                                  : null
+
+                              if (!editHref && !canDelete) {
+                                return (
+                                  <IconChevronRight className="w-4 h-4 text-muted/60 group-hover:text-primary transition-colors inline-block" />
+                                )
+                              }
+                              return (
+                                <div className="flex items-center justify-end gap-3">
+                                  {editHref && (
+                                    <Link
+                                      to={editHref}
+                                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline whitespace-nowrap"
+                                    >
+                                      <IconEdit className="w-3.5 h-3.5" />
+                                      แก้ไข
+                                    </Link>
+                                  )}
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      title="ลบ"
+                                      onClick={() => setDeleteTarget(s)}
+                                      className="p-1 rounded-lg text-muted hover:text-danger hover:bg-danger-light transition-colors"
+                                    >
+                                      <IconTrash className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Shortcuts */}
@@ -372,6 +507,43 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      <Modal open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)}>
+        {deleteTarget && (
+          <>
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-3xl shrink-0">🗑️</span>
+              <div>
+                <h3 className="font-semibold text-ink text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
+                  ยืนยันการลบ
+                </h3>
+                <p className="text-sm text-muted mt-1">
+                  {deleteTarget.is_duplicate ? (
+                    <>
+                      จะลบเฉพาะคำขออัปเดตข้อมูลนี้ — สนามจริง{' '}
+                      <strong className="text-ink">{deleteTarget.matchedCourt?.name}</strong> จะไม่ถูกลบ
+                    </>
+                  ) : (
+                    <>
+                      จะลบสนาม <strong className="text-ink">{deleteTarget.court?.name}</strong> ที่ส่งไปทั้งหมด
+                      — ย้อนกลับไม่ได้
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                ยกเลิก
+              </Button>
+              <Button variant="danger" onClick={handleConfirmDelete} loading={deleting}>
+                ลบ
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
     </AppLayout>
   )
 }

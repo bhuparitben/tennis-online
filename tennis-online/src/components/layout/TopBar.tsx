@@ -84,8 +84,8 @@ export default function TopBar({
     }
   }, [menuOpen])
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
 

@@ -189,18 +189,18 @@ export default function ProfilePage() {
           ...(form.province_id ? { province_id: Number(form.province_id) } : {}),
         }),
       }
-      const { data } = await api.patch<{ profile: UserProfile; token: string }>('/auth/me', payload)
+      // The server also re-issues the session cookie here if the email
+      // changed (the email is embedded in the JWT) — nothing to do with a
+      // token client-side since it's never exposed to JS.
+      const { data } = await api.patch<{ profile: UserProfile }>('/auth/me', payload)
 
       setProfile(data.profile)
-      updateUser(
-        {
-          name: data.profile.full_name,
-          email: data.profile.email ?? '',
-          province_id: data.profile.province_id,
-          province_name: data.profile.province_name ?? undefined,
-        },
-        data.token,
-      )
+      updateUser({
+        name: data.profile.full_name,
+        email: data.profile.email ?? '',
+        province_id: data.profile.province_id,
+        province_name: data.profile.province_name ?? undefined,
+      })
       setProfileMsg({ tone: 'ok', text: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
     } catch (err) {
       setProfileMsg({ tone: 'err', text: apiError(err, 'บันทึกข้อมูลไม่สำเร็จ') })

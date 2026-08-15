@@ -30,8 +30,13 @@ export default function StepBasicInfo({ register, errors, watch, setValue }: Pro
       .get<District[]>(`/districts?province_id=${provinceId}`)
       .then((r) => setDistricts(r.data))
       .finally(() => setLoadingDistricts(false))
-    setValue('district_id', null)
-  }, [provinceId, setValue])
+    // Clearing district_id here (keyed on provinceId) used to also fire the
+    // very first time an edit-mode form loads — province_id goes from null
+    // to the court's real value via reset(), this effect sees that as a
+    // "change", and wipes out the district_id reset() just set a moment
+    // earlier. Resetting district_id belongs in the province field's own
+    // onChange instead, where it only fires on an actual user pick.
+  }, [provinceId])
 
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -49,7 +54,12 @@ export default function StepBasicInfo({ register, errors, watch, setValue }: Pro
         <Select
           error={!!errors.province_id}
           value={provinceId ?? ''}
-          onChange={(e) => setValue('province_id', e.target.value ? Number(e.target.value) : null)}
+          onChange={(e) => {
+            setValue('province_id', e.target.value ? Number(e.target.value) : null)
+            // A real user pick means the old district no longer applies —
+            // the district list is about to reload for the new province.
+            setValue('district_id', null)
+          }}
         >
           <option value="">-- เลือกจังหวัด --</option>
           {provinces.map((p) => (

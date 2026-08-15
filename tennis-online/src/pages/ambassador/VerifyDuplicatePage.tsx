@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import TopBar from '../../components/layout/TopBar'
 import Button from '../../components/ui/Button'
 import FieldCompareRow from '../../components/court/FieldCompareRow'
+import NewCourtDetailCard from '../../components/court/NewCourtDetailCard'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../lib/apiClient'
 import type { CourtFormData, SubmissionDetail } from '../../types'
+import { submitterName } from '../../types'
 
 // ===== Status badge =====
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
@@ -103,6 +105,12 @@ export default function VerifyDuplicatePage() {
 
   const [saving, setSaving] = useState(false)
 
+  // React StrictMode (dev only) intentionally double-invokes effects on
+  // mount to surface exactly this kind of bug — without this guard, the
+  // ambassador-entry effect below would fire its POST twice and silently
+  // create two identical duplicate-submission rows for one "ตรวจสอบ" click.
+  const submissionCreationStarted = useRef(false)
+
   // Load submission helper
   async function loadSubmission(id: number) {
     setPhase('loading')
@@ -136,6 +144,9 @@ export default function VerifyDuplicatePage() {
       setPhase('error')
       return
     }
+
+    if (submissionCreationStarted.current) return
+    submissionCreationStarted.current = true
 
     api
       .post<{ id: number }>('/submissions/duplicate', {
@@ -185,14 +196,41 @@ export default function VerifyDuplicatePage() {
         field_choices: adminChoices,
         review_note: reviewNote.trim() || undefined,
       })
+      const courtName = (submission.is_duplicate ? submission.matchedCourt?.name : submission.court?.name) ?? ''
       navigate('/admin/submissions', {
-        state: { success: `อนุมัติการแก้ไขสนาม "${submission.matchedCourt?.name ?? ''}" เรียบร้อยแล้ว` },
+        state: {
+          success: submission.is_duplicate
+            ? `อนุมัติการแก้ไขสนาม "${courtName}" เรียบร้อยแล้ว`
+            : `อนุมัติและเผยแพร่สนาม "${courtName}" เรียบร้อยแล้ว`,
+        },
       })
     } catch (err) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ===== Ambassador: inline-edit a "new value" cell in the compare table =====
+  async function handleSaveField(fieldName: string, value: string) {
+    if (!submissionId) return
+    try {
+      const { data } = await api.patch<{ is_changed: boolean }>(`/submissions/${submissionId}/field`, {
+        field_name: fieldName,
+        new_value: value,
+      })
+      setSubmission((prev) =>
+        prev && {
+          ...prev,
+          fieldChanges: prev.fieldChanges.map((fc) =>
+            fc.field_name === fieldName ? { ...fc, new_value: value, is_changed: data.is_changed } : fc,
+          ),
+        },
+      )
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setError(msg ?? 'บันทึกการแก้ไขไม่สำเร็จ')
     }
   }
 
@@ -212,12 +250,17 @@ export default function VerifyDuplicatePage() {
       ]
     : [
         { label: 'หน้าหลัก', to: '/ambassador/dashboard' },
-        { label: 'เพิ่มสนาม', to: '/ambassador/courts/add' },
+        ...(urlSubmissionId ? [] : [{ label: 'เพิ่มสนาม', to: '/ambassador/courts/add' }]),
         { label: 'ตรวจสอบข้อมูลซ้ำ' },
       ]
 
   // ===== Changed field count =====
   const changedCount = submission?.fieldChanges.filter((f) => f.is_changed).length ?? 0
+
+  // The ambassador can keep editing and re-confirming their own submission
+  // right up until an admin approves it — pending, verified, and
+  // need_update are all still "in play"; approved is final.
+  const canAmbassadorEdit = !isAdmin && submission?.review_status !== 'approved'
 
   // ===== Render =====
   return (
@@ -253,97 +296,141 @@ export default function VerifyDuplicatePage() {
 
         {phase === 'ready' && submission && (
           <>
-            {/* === Banner === */}
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
-              <span className="text-3xl shrink-0">⚠️</span>
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-ink text-lg mb-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
-                  พบข้อมูลสนามซ้ำในระบบ
-                </h2>
-                <p className="text-sm text-muted">
-                  ชื่อสนาม:{' '}
-                  <strong className="text-ink">{submission.matchedCourt?.name}</strong>
-                  {submission.matchedCourt?.province && (
-                    <> · {submission.matchedCourt.province.name_th}</>
+            {submission.is_duplicate ? (
+              <>
+                {/* === Banner (duplicate) === */}
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+                  <span className="text-3xl shrink-0">⚠️</span>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-ink text-lg mb-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
+                      พบข้อมูลสนามซ้ำในระบบ
+                    </h2>
+                    <p className="text-sm text-muted">
+                      ชื่อสนาม:{' '}
+                      <strong className="text-ink">{submission.matchedCourt?.name}</strong>
+                      {submission.matchedCourt?.province && (
+                        <> · {submission.matchedCourt.province.name_th}</>
+                      )}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <StatusBadge status={submission.review_status} />
+                      <span className="text-xs text-muted">
+                        ส่งเมื่อ{' '}
+                        {new Date(submission.created_at).toLocaleDateString('th-TH', {
+                          dateStyle: 'medium',
+                        })}
+                      </span>
+                      <span className="text-xs text-muted">
+                        โดย {submitterName(submission)}
+                      </span>
+                      {changedCount > 0 && (
+                        <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                          {changedCount} ฟิลด์ที่เปลี่ยนแปลง
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* === Comparison table === */}
+                <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
+                  {/* Table header */}
+                  <div
+                    className={[
+                      'grid text-xs font-semibold text-muted uppercase tracking-wide bg-bg border-b border-border px-4 py-3',
+                      isAdmin ? 'grid-cols-[1fr_2fr_2fr_auto]' : 'grid-cols-[1fr_2fr_2fr]',
+                    ].join(' ')}
+                  >
+                    <div>ฟิลด์</div>
+                    <div className="pl-4 border-l border-border">ข้อมูลในระบบ (เดิม)</div>
+                    <div className="pl-4 border-l border-border">
+                      ข้อมูลที่ส่งมา (ใหม่)
+                      {canAmbassadorEdit && (
+                        <span className="normal-case font-normal text-primary ml-1">(แก้ไขได้)</span>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <div className="pl-4 border-l border-border">เลือก</div>
+                    )}
+                  </div>
+
+                  {/* Admin quick-select buttons */}
+                  {isAdmin && changedCount > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200">
+                      <span className="text-xs text-muted mr-2">เลือกทั้งหมด:</span>
+                      <button
+                        type="button"
+                        onClick={() => setAllChoices('old')}
+                        className="text-xs px-2 py-1 rounded-lg border border-border bg-white hover:border-primary hover:text-primary transition-colors"
+                      >
+                        ← ข้อมูลเดิม
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAllChoices('new')}
+                        className="text-xs px-2 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:border-amber-500 hover:text-amber-700 transition-colors"
+                      >
+                        ข้อมูลใหม่ →
+                      </button>
+                    </div>
                   )}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 mt-2">
-                  <StatusBadge status={submission.review_status} />
-                  <span className="text-xs text-muted">
-                    ส่งเมื่อ{' '}
-                    {new Date(submission.created_at).toLocaleDateString('th-TH', {
-                      dateStyle: 'medium',
-                    })}
-                  </span>
-                  <span className="text-xs text-muted">
-                    โดย {submission.ambassador.full_name}
-                  </span>
-                  {changedCount > 0 && (
-                    <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                      {changedCount} ฟิลด์ที่เปลี่ยนแปลง
-                    </span>
+
+                  {/* Rows */}
+                  {submission.fieldChanges.map((fc) => (
+                    <FieldCompareRow
+                      key={fc.id}
+                      change={fc}
+                      isAdmin={isAdmin}
+                      adminChoice={adminChoices[fc.field_name] ?? 'old'}
+                      onAdminChoiceChange={(choice) =>
+                        setAdminChoices((prev) => ({ ...prev, [fc.field_name]: choice }))
+                      }
+                      editable={canAmbassadorEdit}
+                      onSaveNewValue={handleSaveField}
+                    />
+                  ))}
+
+                  {submission.fieldChanges.length === 0 && (
+                    <div className="px-4 py-8 text-center text-sm text-muted">
+                      ไม่มีข้อมูลเปรียบเทียบ
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
+              </>
+            ) : (
+              <>
+                {/* === Banner (new court) === */}
+                <div className="bg-primary-light border border-primary/20 rounded-2xl p-5 flex items-start gap-4">
+                  <span className="text-3xl shrink-0">🎾</span>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold text-ink text-lg mb-0.5" style={{ fontFamily: 'var(--font-heading)' }}>
+                      สนามใหม่ — {submission.court?.name ?? 'ไม่พบชื่อสนาม'}
+                    </h2>
+                    <p className="text-sm text-muted">
+                      {submission.court?.province?.name_th}
+                      {submission.court?.district?.name_th && <> · {submission.court.district.name_th}</>}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <StatusBadge status={submission.review_status} />
+                      <span className="text-xs text-muted">
+                        ส่งเมื่อ{' '}
+                        {new Date(submission.created_at).toLocaleDateString('th-TH', { dateStyle: 'medium' })}
+                      </span>
+                      <span className="text-xs text-muted">โดย {submitterName(submission)}</span>
+                    </div>
+                  </div>
+                </div>
 
-            {/* === Comparison table === */}
-            <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
-              {/* Table header */}
-              <div
-                className={[
-                  'grid text-xs font-semibold text-muted uppercase tracking-wide bg-bg border-b border-border px-4 py-3',
-                  isAdmin ? 'grid-cols-[1fr_2fr_2fr_auto]' : 'grid-cols-[1fr_2fr_2fr]',
-                ].join(' ')}
-              >
-                <div>ฟิลด์</div>
-                <div className="pl-4 border-l border-border">ข้อมูลในระบบ (เดิม)</div>
-                <div className="pl-4 border-l border-border">ข้อมูลที่ส่งมา (ใหม่)</div>
-                {isAdmin && (
-                  <div className="pl-4 border-l border-border">เลือก</div>
+                {/* === Full submitted detail === */}
+                {submission.court ? (
+                  <NewCourtDetailCard court={submission.court} />
+                ) : (
+                  <div className="bg-white rounded-2xl border border-border p-8 text-center text-sm text-muted">
+                    ไม่พบข้อมูลสนามที่ส่งเข้ามา
+                  </div>
                 )}
-              </div>
-
-              {/* Admin quick-select buttons */}
-              {isAdmin && changedCount > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200">
-                  <span className="text-xs text-muted mr-2">เลือกทั้งหมด:</span>
-                  <button
-                    type="button"
-                    onClick={() => setAllChoices('old')}
-                    className="text-xs px-2 py-1 rounded-lg border border-border bg-white hover:border-primary hover:text-primary transition-colors"
-                  >
-                    ← ข้อมูลเดิม
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAllChoices('new')}
-                    className="text-xs px-2 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:border-amber-500 hover:text-amber-700 transition-colors"
-                  >
-                    ข้อมูลใหม่ →
-                  </button>
-                </div>
-              )}
-
-              {/* Rows */}
-              {submission.fieldChanges.map((fc) => (
-                <FieldCompareRow
-                  key={fc.id}
-                  change={fc}
-                  isAdmin={isAdmin}
-                  adminChoice={adminChoices[fc.field_name] ?? 'old'}
-                  onAdminChoiceChange={(choice) =>
-                    setAdminChoices((prev) => ({ ...prev, [fc.field_name]: choice }))
-                  }
-                />
-              ))}
-
-              {submission.fieldChanges.length === 0 && (
-                <div className="px-4 py-8 text-center text-sm text-muted">
-                  ไม่มีข้อมูลเปรียบเทียบ
-                </div>
-              )}
-            </div>
+              </>
+            )}
 
             {/* === Error alert === */}
             {error && (
@@ -353,7 +440,7 @@ export default function VerifyDuplicatePage() {
             )}
 
             {/* === Ambassador action panel === */}
-            {!isAdmin && submission.review_status === 'pending' && (
+            {canAmbassadorEdit && (
               <div className="bg-white rounded-2xl border border-border p-6 space-y-5">
                 <h3 className="font-semibold text-ink" style={{ fontFamily: 'var(--font-heading)' }}>
                   การยืนยันข้อมูล
@@ -430,23 +517,21 @@ export default function VerifyDuplicatePage() {
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() => navigate('/ambassador/courts/add')}
+                    onClick={() => navigate('/ambassador/dashboard')}
                     disabled={saving}
                   >
-                    กลับไปแก้ไขข้อมูล
+                    กลับหน้าหลัก
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* === Ambassador: already submitted === */}
-            {!isAdmin && submission.review_status !== 'pending' && (
+            {/* === Ambassador: locked — admin already approved this === */}
+            {!isAdmin && submission.review_status === 'approved' && (
               <div className="bg-white rounded-2xl border border-border p-6 text-center">
                 <StatusBadge status={submission.review_status} />
                 <p className="text-sm text-muted mt-3">
-                  {submission.review_status === 'approved'
-                    ? 'ข้อมูลสนามนี้ได้รับการอนุมัติแล้ว'
-                    : 'รอ Admin ตรวจสอบและพิจารณา'}
+                  ข้อมูลสนามนี้ได้รับการอนุมัติแล้ว
                 </p>
                 {submission.review_note && (
                   <div className="mt-3 text-sm text-ink bg-bg rounded-xl px-4 py-3 text-left">
@@ -475,8 +560,9 @@ export default function VerifyDuplicatePage() {
                 ) : (
                   <>
                     <p className="text-sm text-muted">
-                      เลือกว่าจะใช้ข้อมูลใด (เดิม/ใหม่) สำหรับฟิลด์ที่มีการเปลี่ยนแปลง
-                      แล้วกด "อนุมัติ" เพื่ออัปเดตข้อมูลสนามและเผยแพร่
+                      {submission.is_duplicate
+                        ? 'เลือกว่าจะใช้ข้อมูลใด (เดิม/ใหม่) สำหรับฟิลด์ที่มีการเปลี่ยนแปลง แล้วกด "อนุมัติ" เพื่ออัปเดตข้อมูลสนามและเผยแพร่'
+                        : 'ตรวจสอบข้อมูลสนามด้านบนให้ครบถ้วน แล้วกด "อนุมัติ" เพื่อเผยแพร่สนามนี้เข้าสู่ระบบ'}
                     </p>
 
                     {/* Review note */}

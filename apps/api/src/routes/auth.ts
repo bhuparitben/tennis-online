@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { signToken, requireAuth } from '../middleware/auth.js';
+import { signToken, requireAuth, setAuthCookie, clearAuthCookie } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -41,7 +41,8 @@ router.post('/login', async (req: Request, res: Response) => {
         return;
       }
       const token = signToken({ id: admin.id, role: 'admin', email: admin.email });
-      res.json({ token, user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' } });
+      setAuthCookie(res, token);
+      res.json({ user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' } });
       return;
     }
 
@@ -82,8 +83,8 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const token = signToken({ id: ambassador.id, role: 'ambassador', email: ambassador.email! });
+    setAuthCookie(res, token);
     res.json({
-      token,
       user: {
         id: ambassador.id,
         name: ambassador.full_name,
@@ -157,6 +158,13 @@ router.post('/register-interest', async (req: Request, res: Response) => {
   } catch (err: unknown) {
     fail(res, err, 'register-interest', 'Registration failed');
   }
+});
+
+// POST /api/auth/logout — clears the HttpOnly cookie server-side; JS can't
+// delete it itself, so this endpoint is the only way to end a session early.
+router.post('/logout', (_req: Request, res: Response) => {
+  clearAuthCookie(res);
+  res.json({ message: 'ออกจากระบบแล้ว' });
 });
 
 // ===== Profile =====
@@ -271,9 +279,11 @@ router.patch('/me', requireAuth, async (req: Request, res: Response) => {
     }
 
     const profile = await loadProfile(id, role);
-    // Email lives in the token, so hand back a fresh one after an email change.
+    // Email lives in the token, so re-issue the session cookie after an
+    // email change — the client never sees the token itself.
     const token = signToken({ id, role, email: d.email });
-    res.json({ profile, token });
+    setAuthCookie(res, token);
+    res.json({ profile });
   } catch (err: unknown) {
     fail(res, err, 'me:patch', 'บันทึกข้อมูลไม่สำเร็จ');
   }

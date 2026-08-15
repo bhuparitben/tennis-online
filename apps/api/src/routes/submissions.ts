@@ -6,6 +6,8 @@ import {
   verifySubmission,
   approveSubmission,
   listSubmissions,
+  updateSubmissionField,
+  deleteSubmission,
 } from '../controllers/submissionController.js';
 
 const router = Router();
@@ -15,8 +17,10 @@ router.use(requireAuth);
 
 router.get('/', listSubmissions);
 router.get('/:id', getSubmission);
-router.post('/duplicate', requireRole('ambassador'), createDuplicateSubmission);
+router.post('/duplicate', requireRole('ambassador', 'admin'), createDuplicateSubmission);
+router.patch('/:id/field', requireRole('ambassador'), updateSubmissionField);
 router.patch('/:id/verify', requireRole('ambassador'), verifySubmission);
 router.patch('/:id/approve', requireRole('admin'), approveSubmission);
+router.delete('/:id', requireRole('ambassador', 'admin'), deleteSubmission);
 
 export default router;
