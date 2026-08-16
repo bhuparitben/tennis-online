@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://tennis-online-tennis-online-quxc.vercel.app/api/$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "https://tennis-online-tennis-online-quxc.vercel.app/uploads/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
