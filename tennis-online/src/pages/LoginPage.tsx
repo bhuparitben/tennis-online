@@ -32,10 +32,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="text-5xl block mb-3">🎾</span>
-          <h1 className="text-2xl font-bold text-primary" style={{ fontFamily: 'var(--font-heading)' }}>
-            Tennis Online
-          </h1>
+          <img
+            src="/tennis%20online%20thailand%20logo.PNG"
+            alt="Tennis Online Thailand"
+            className="w-40 h-40 mx-auto object-contain -mb-2"
+          />
           <p className="text-muted text-sm mt-1">ระบบ Ambassador Portal</p>
         </div>
 
