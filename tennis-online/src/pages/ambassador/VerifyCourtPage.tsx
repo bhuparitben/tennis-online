@@ -12,7 +12,7 @@ import StepAmenities from '../../components/court/steps/StepAmenities'
 import StepPhotos from '../../components/court/steps/StepPhotos'
 import { EMPTY_COURT_FORM, courtToFormData } from '../../lib/courtFormData'
 import type { CourtFormData, CourtWithRelations, Province } from '../../types'
-import api from '../../lib/apiClient'
+import api, { resolveAssetUrl } from '../../lib/apiClient'
 
 type CourtSearchRow = CourtWithRelations & { images?: { url: string }[] }
 
@@ -114,7 +114,7 @@ function SearchPanel({ onPick }: { onPick: (court: CourtSearchRow) => void }) {
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-white hover:border-primary/40 hover:bg-primary-light/20 transition-colors text-left"
             >
               {c.images?.[0]?.url ? (
-                <img src={c.images[0].url} alt="" className="w-14 h-10 rounded-lg object-cover bg-bg shrink-0" />
+                <img src={resolveAssetUrl(c.images[0].url)} alt="" className="w-14 h-10 rounded-lg object-cover bg-bg shrink-0" />
               ) : (
                 <ImagePlaceholder className="w-14 h-10 rounded-lg shrink-0" />
               )}

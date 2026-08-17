@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CourtWithRelations, CourtAmenities, PricingRow } from '../../types'
 import ImagePlaceholder from '../ui/ImagePlaceholder'
 import Lightbox from '../ui/Lightbox'
+import { resolveAssetUrl } from '../../lib/apiClient'
 
 const INDOOR_OUTDOOR_LABELS: Record<string, string> = {
   indoor: 'ในร่ม (Indoor)',
@@ -202,7 +203,7 @@ export default function NewCourtDetailCard({ court }: { court: CourtWithRelation
                 className="relative group cursor-zoom-in"
               >
                 <img
-                  src={img.url}
+                  src={resolveAssetUrl(img.url)}
                   alt=""
                   className={[
                     'w-full aspect-video rounded-xl object-cover bg-bg border transition-opacity group-hover:opacity-90',
@@ -224,7 +225,7 @@ export default function NewCourtDetailCard({ court }: { court: CourtWithRelation
 
       {lightboxIndex !== null && (
         <Lightbox
-          images={sortedImages.map((img) => ({ url: img.url }))}
+          images={sortedImages.map((img) => ({ url: resolveAssetUrl(img.url) }))}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onIndexChange={setLightboxIndex}

@@ -7,7 +7,7 @@ import ImagePlaceholder from '../../components/ui/ImagePlaceholder'
 import Toast from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
-import api from '../../lib/apiClient'
+import api, { resolveAssetUrl } from '../../lib/apiClient'
 import type { IconProps } from '../../components/ui/icons'
 import type { SubmissionListItem } from '../../types'
 import {
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                       const card = s.court ?? s.matchedCourt
                       const meta = STATUS_MAP[s.review_status]
                       const StatusIcon = meta.icon
-                      const thumb = card?.images?.[0]?.url
+                      const thumb = card?.images?.[0]?.url ? resolveAssetUrl(card.images[0].url) : undefined
                       return (
                         <tr key={s.id} className="border-b border-border last:border-0 hover:bg-bg/50 group">
                           <td className="px-5 py-3">

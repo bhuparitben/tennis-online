@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import type { UseFormWatch, UseFormSetValue, UseFormGetValues } from 'react-hook-form'
 import type { CourtFormData } from '../../../types'
-import api from '../../../lib/apiClient'
+import api, { resolveAssetUrl } from '../../../lib/apiClient'
 
 interface Props {
   watch: UseFormWatch<CourtFormData>
@@ -24,7 +24,7 @@ export default function StepPhotos({ watch, setValue, getValues }: Props) {
   // show as thumbnails immediately, not just invisibly in form state).
   const [items, setItems] = useState<UploadItem[]>(() =>
     watch('images').map((img) => ({
-      preview: img.url,
+      preview: resolveAssetUrl(img.url),
       url: img.url,
       uploading: false,
       name: img.url,

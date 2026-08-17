@@ -34,23 +34,26 @@ export function signToken(payload: JwtPayload): string {
   } as jwt.SignOptions);
 }
 
+// Frontend (Vercel) and backend (Render) sit on different domains in
+// production, so the session cookie has to be sent cross-site — that only
+// works with SameSite=None, which browsers refuse to honor without Secure.
+// In dev, frontend and backend are same-origin (via Vite's proxy), so Lax
+// over plain http still works and doesn't need Secure.
+const isProd = process.env.NODE_ENV === 'production';
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/',
+};
+
 export function setAuthCookie(res: Response, token: string): void {
-  res.cookie(AUTH_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    // No `maxAge`/`expires`: a session cookie, cleared when the browser closes.
-    path: '/',
-  });
+  // No `maxAge`/`expires`: a session cookie, cleared when the browser closes.
+  res.cookie(AUTH_COOKIE, token, COOKIE_OPTS);
 }
 
 export function clearAuthCookie(res: Response): void {
-  res.clearCookie(AUTH_COOKIE, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-  });
+  res.clearCookie(AUTH_COOKIE, COOKIE_OPTS);
 }
 
 /** Require a valid session cookie — attaches req.user */

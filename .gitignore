@@ -28,3 +28,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Personal scratch notes — never commit credentials
+db.txt
+tennis-online/db.txt
