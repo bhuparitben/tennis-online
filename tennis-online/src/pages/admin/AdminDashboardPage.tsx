@@ -5,10 +5,10 @@ import AppLayout from '../../components/layout/AppLayout'
 import TopBar from '../../components/layout/TopBar'
 import Button from '../../components/ui/Button'
 import api from '../../lib/apiClient'
-import type { AmbassadorRow, Province } from '../../types'
+import type { AmbassadorRow, AmbassadorDetail, Province } from '../../types'
 import {
   IconUsers, IconCheckCircle, IconClock, IconAlert, IconSearch,
-  IconClose, IconEye, IconEyeOff, IconMail, IconUserCircle,
+  IconClose, IconEye, IconEyeOff, IconMail, IconUserCircle, IconCourt,
 } from '../../components/ui/icons'
 
 const TENNIS_ROLES = [
@@ -21,7 +21,7 @@ const TENNIS_ROLES = [
 ]
 
 type Tab = 'ambassadors' | 'news' | 'qa'
-type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected'
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'blocked'
 
 const NEWS = [
   { title: 'TOT Junior Championship 2025 เปิดรับสมัคร', date: '8 ส.ค. 2568', views: 312 },
@@ -39,9 +39,10 @@ const inp =
   'w-full rounded-xl border border-border px-3 py-2 text-sm text-ink placeholder-muted bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary'
 
 const STATUS_META: Record<AmbassadorRow['status'], { label: string; cls: string }> = {
-  approved: { label: 'อนุมัติแล้ว', cls: 'bg-success-light text-success' },
-  pending:  { label: 'รอตรวจสอบ',  cls: 'bg-warning-light text-warning' },
-  rejected: { label: 'ปฏิเสธแล้ว', cls: 'bg-danger-light text-danger' },
+  approved: { label: 'อนุมัติแล้ว',  cls: 'bg-success-light text-success' },
+  pending:  { label: 'รอตรวจสอบ',   cls: 'bg-warning-light text-warning' },
+  rejected: { label: 'ปฏิเสธแล้ว',  cls: 'bg-danger-light text-danger' },
+  blocked:  { label: 'ถูกบล็อก',    cls: 'bg-ink/10 text-ink' },
 }
 
 function apiError(err: unknown, fallback: string) {
@@ -483,6 +484,203 @@ function DetailModal({
   )
 }
 
+// Badge for a submission's own review status inside the data-preview list —
+// this is CourtSubmission.review_status, not the court's own CourtStatus.
+const REVIEW_STATUS_LABEL: Record<string, string> = {
+  pending: 'รอตรวจสอบ',
+  verified: 'ยืนยันแล้ว',
+  approved: 'อนุมัติแล้ว',
+  need_update: 'ต้องแก้ไข',
+  rejected: 'ปฏิเสธ',
+}
+
+type ImpactAction = 'reject' | 'block' | 'reset'
+
+const ACTION_META: Record<ImpactAction, { title: string; confirmLabel: string; endpoint: string; danger?: boolean }> = {
+  reject: { title: 'ปฏิเสธใบสมัคร', confirmLabel: 'ยืนยันปฏิเสธ', endpoint: 'reject', danger: true },
+  block: { title: 'ระงับการใช้งานชั่วคราว (บล็อก)', confirmLabel: 'ยืนยันบล็อก', endpoint: 'block', danger: true },
+  reset: { title: 'ตั้งสถานะกลับเป็นรอตรวจสอบ', confirmLabel: 'ยืนยัน', endpoint: 'reset' },
+}
+
+/**
+ * Shared confirmation for reject / block / reset-to-pending — before any of
+ * these lands, the admin sees exactly what this ambassador has submitted so
+ * far (not just their profile), since the decision may hinge on that (e.g.
+ * "has this person been adding junk data?"). Reject additionally requires a
+ * reason, which is shown back to the ambassador on their read-only banner.
+ */
+function ImpactDialog({
+  target,
+  action,
+  onClose,
+  onDone,
+}: {
+  target: AmbassadorRow
+  action: ImpactAction
+  onClose: () => void
+  onDone: (msg: string) => void
+}) {
+  const meta = ACTION_META[action]
+  const [detail, setDetail] = useState<AmbassadorDetail | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<AmbassadorDetail>(`/ambassadors/${target.id}`)
+      .then(({ data }) => { if (!cancelled) setDetail(data) })
+      .catch((err) => { if (!cancelled) setLoadError(apiError(err, 'โหลดข้อมูลไม่สำเร็จ')) })
+    return () => { cancelled = true }
+  }, [target.id])
+
+  async function submit() {
+    setError('')
+    if (action === 'reject' && reason.trim().length < 5) {
+      setError('กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร')
+      return
+    }
+    setBusy(true)
+    try {
+      await api.patch(`/ambassadors/${target.id}/${meta.endpoint}`, action === 'reject' ? { reason: reason.trim() } : action === 'block' ? { note: reason.trim() || undefined } : undefined)
+      const doneMsg =
+        action === 'reject'
+          ? `ปฏิเสธใบสมัครของ ${target.full_name} แล้ว`
+          : action === 'block'
+            ? `ระงับการใช้งานของ ${target.full_name} แล้ว`
+            : `ตั้งสถานะของ ${target.full_name} กลับเป็นรอตรวจสอบแล้ว`
+      onDone(doneMsg)
+    } catch (err) {
+      setError(apiError(err, 'ดำเนินการไม่สำเร็จ'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submissions = detail?.submissions ?? []
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface rounded-2xl border border-border shadow-xl p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="font-semibold text-ink" style={{ fontFamily: 'var(--font-heading)' }}>
+            {meta.title}
+          </h3>
+          <button onClick={onClose} aria-label="ปิด" className="p-1 -mr-1 text-muted hover:text-ink rounded-lg hover:bg-bg">
+            <IconClose className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-xs text-muted mb-4">
+          {target.full_name} · {target.province?.name_th ?? '—'} · {contactOf(target)}
+        </p>
+
+        {/* Data preview — what this ambassador has actually submitted so far.
+            Reads from CourtSubmission (both new-court and "ซ้ำ" duplicate/update
+            proposals), not just courts they personally created — an ambassador
+            who only ever files update proposals against other people's courts
+            would otherwise show up as having submitted nothing. */}
+        <div className="rounded-xl border border-border bg-bg/60 p-3.5 mb-4">
+          <p className="text-xs font-semibold text-ink mb-2 flex items-center gap-1.5">
+            <IconCourt className="w-4 h-4 text-primary" />
+            ข้อมูลสนามที่เคยส่งเข้ามา
+          </p>
+          {!detail && !loadError && <p className="text-xs text-muted">กำลังโหลด…</p>}
+          {loadError && <p className="text-xs text-danger">{loadError}</p>}
+          {detail && submissions.length === 0 && (
+            <p className="text-xs text-muted">ยังไม่เคยส่งข้อมูลสนามเข้ามา</p>
+          )}
+          {detail && submissions.length > 0 && (
+            <>
+              <p className="text-[11px] text-muted mb-2">
+                ส่งมาแล้วทั้งหมด {detail._count.submissions} รายการ
+              </p>
+              <ul className="space-y-1.5 max-h-40 overflow-y-auto">
+                {submissions.map((s) => {
+                  const c = s.court ?? s.matchedCourt
+                  return (
+                    <li key={s.id} className="flex items-center justify-between gap-2 text-xs bg-white rounded-lg border border-border px-2.5 py-1.5">
+                      <span className="text-ink font-medium truncate">{c?.name ?? 'ไม่พบชื่อสนาม'}</span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-light text-primary font-medium">
+                          {s.is_duplicate ? 'ซ้ำ/อัปเดต' : 'ใหม่'}
+                        </span>
+                        {c?.is_published && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success-light text-success font-semibold">เผยแพร่แล้ว</span>
+                        )}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg text-muted font-medium">
+                          {REVIEW_STATUS_LABEL[s.review_status] ?? s.review_status}
+                        </span>
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+
+        {action === 'reject' && (
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-ink mb-1">
+              เหตุผลที่ปฏิเสธ <span className="text-danger">*</span>
+            </label>
+            <textarea
+              className={inp + ' resize-none'}
+              rows={3}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="อธิบายเหตุผลให้ชัดเจน — ระบบจะแสดงข้อความนี้ให้ Ambassador คนนี้เห็นเมื่อเข้าสู่ระบบ"
+              required
+            />
+          </div>
+        )}
+        {action === 'block' && (
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-ink mb-1">หมายเหตุ (ถ้ามี)</label>
+            <textarea
+              className={inp + ' resize-none'}
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="บันทึกภายใน — Ambassador จะไม่เห็นข้อความนี้"
+            />
+          </div>
+        )}
+        {action === 'reset' && (
+          <p className="text-xs text-muted mb-4">
+            บัญชีจะกลับไปอยู่ในสถานะ "รอตรวจสอบ" เหมือนใบสมัครใหม่ — อีเมล/รหัสผ่านเดิมยังใช้ได้เมื่ออนุมัติอีกครั้ง
+          </p>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-danger/20 bg-danger-light px-3 py-2 text-xs text-danger flex items-start gap-2 mb-4">
+            <IconAlert className="w-4 h-4 shrink-0 mt-px" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-border px-4 py-2 text-sm text-ink hover:bg-bg transition-colors"
+          >
+            ยกเลิก
+          </button>
+          <Button variant={meta.danger ? 'danger' : 'primary'} loading={busy} onClick={submit} className="px-4 py-2">
+            {meta.confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState<Tab>('ambassadors')
   const [rows, setRows] = useState<AmbassadorRow[]>([])
@@ -494,7 +692,7 @@ export default function AdminDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [approving, setApproving] = useState<AmbassadorRow | null>(null)
   const [viewing, setViewing] = useState<AmbassadorRow | null>(null)
-  const [rejectingId, setRejectingId] = useState<number | null>(null)
+  const [impact, setImpact] = useState<{ target: AmbassadorRow; action: ImpactAction } | null>(null)
   const [provinces, setProvinces] = useState<Province[]>([])
 
   const load = useCallback(async () => {
@@ -520,6 +718,7 @@ export default function AdminDashboardPage() {
       approved: rows.filter((r) => r.status === 'approved').length,
       pending: rows.filter((r) => r.status === 'pending').length,
       rejected: rows.filter((r) => r.status === 'rejected').length,
+      blocked: rows.filter((r) => r.status === 'blocked').length,
     }),
     [rows],
   )
@@ -534,19 +733,6 @@ export default function AdminDashboardPage() {
         .some((v) => String(v).toLowerCase().includes(q))
     })
   }, [rows, search, statusFilter])
-
-  async function handleReject(a: AmbassadorRow) {
-    setRejectingId(a.id)
-    try {
-      await api.patch(`/ambassadors/${a.id}/reject`)
-      setFlash(`ปฏิเสธใบสมัครของ ${a.full_name} แล้ว`)
-      await load()
-    } catch (err) {
-      setError(apiError(err, 'ดำเนินการไม่สำเร็จ'))
-    } finally {
-      setRejectingId(null)
-    }
-  }
 
   return (
     <AppLayout>
@@ -566,12 +752,13 @@ export default function AdminDashboardPage() {
       />
 
       {/* ===== Stats ===== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-5">
         {[
           { label: 'ผู้สมัครทั้งหมด', value: stats.total, icon: IconUsers, color: '#2f6bd8' },
           { label: 'อนุมัติแล้ว', value: stats.approved, icon: IconCheckCircle, color: '#1faa55' },
           { label: 'รอตรวจสอบ', value: stats.pending, icon: IconClock, color: '#f0a81b' },
           { label: 'ปฏิเสธแล้ว', value: stats.rejected, icon: IconAlert, color: '#c62828' },
+          { label: 'ถูกบล็อก', value: stats.blocked, icon: IconAlert, color: '#475569' },
         ].map((s) => {
           const Glyph = s.icon
           return (
@@ -653,6 +840,7 @@ export default function AdminDashboardPage() {
                 <option value="pending">รอตรวจสอบ</option>
                 <option value="approved">อนุมัติแล้ว</option>
                 <option value="rejected">ปฏิเสธแล้ว</option>
+                <option value="blocked">ถูกบล็อก</option>
               </select>
             </div>
 
@@ -695,11 +883,19 @@ export default function AdminDashboardPage() {
                             {new Date(a.created_at).toLocaleDateString('th-TH', { dateStyle: 'medium' })}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${meta.cls}`}>
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${meta.cls}`}
+                              title={a.status === 'rejected' ? (a.reject_reason ?? undefined) : undefined}
+                            >
                               {meta.label}
                             </span>
                             {a.status === 'approved' && !a.can_login && (
                               <p className="text-[10px] text-warning mt-1 whitespace-nowrap">ยังไม่ได้ตั้งรหัสผ่าน</p>
+                            )}
+                            {a.status === 'rejected' && a.reject_reason && (
+                              <p className="text-[10px] text-muted mt-1 max-w-[160px] truncate" title={a.reject_reason}>
+                                {a.reject_reason}
+                              </p>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -710,7 +906,7 @@ export default function AdminDashboardPage() {
                               >
                                 รายละเอียด
                               </button>
-                              {a.status === 'pending' && (
+                              {a.status !== 'approved' && (
                                 <button
                                   onClick={() => setApproving(a)}
                                   className="rounded-lg bg-success text-white text-xs px-3 py-1.5 font-semibold hover:opacity-90 transition-opacity"
@@ -720,11 +916,28 @@ export default function AdminDashboardPage() {
                               )}
                               {a.status !== 'rejected' && (
                                 <button
-                                  onClick={() => handleReject(a)}
-                                  disabled={rejectingId === a.id}
-                                  className="rounded-lg border border-border text-xs px-3 py-1.5 text-danger hover:bg-danger-light transition-colors disabled:opacity-50"
+                                  onClick={() => setImpact({ target: a, action: 'reject' })}
+                                  className="rounded-lg border border-border text-xs px-3 py-1.5 text-danger hover:bg-danger-light transition-colors"
                                 >
-                                  {rejectingId === a.id ? '…' : 'ปฏิเสธ'}
+                                  ปฏิเสธ
+                                </button>
+                              )}
+                              {a.status !== 'blocked' && (
+                                <button
+                                  onClick={() => setImpact({ target: a, action: 'block' })}
+                                  title="ระงับการใช้งานชั่วคราว — ไม่ลบข้อมูล"
+                                  className="rounded-lg border border-border text-xs px-3 py-1.5 text-ink hover:bg-bg transition-colors"
+                                >
+                                  บล็อก
+                                </button>
+                              )}
+                              {a.status !== 'pending' && (
+                                <button
+                                  onClick={() => setImpact({ target: a, action: 'reset' })}
+                                  title="ตั้งสถานะกลับเป็นรอตรวจสอบ"
+                                  className="rounded-lg border border-border text-xs px-3 py-1.5 text-muted hover:bg-bg transition-colors"
+                                >
+                                  ตั้งเป็นรอตรวจสอบ
                                 </button>
                               )}
                             </div>
@@ -797,6 +1010,19 @@ export default function AdminDashboardPage() {
             setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)))
             setViewing(null)
             setFlash(msg)
+          }}
+        />
+      )}
+
+      {impact && (
+        <ImpactDialog
+          target={impact.target}
+          action={impact.action}
+          onClose={() => setImpact(null)}
+          onDone={(msg) => {
+            setImpact(null)
+            setFlash(msg)
+            load()
           }}
         />
       )}

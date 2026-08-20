@@ -8,6 +8,7 @@ import Toast from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import api, { resolveAssetUrl } from '../../lib/apiClient'
+import { useAuth } from '../../contexts/AuthContext'
 import type { IconProps } from '../../components/ui/icons'
 import type { SubmissionListItem } from '../../types'
 import {
@@ -31,20 +32,25 @@ type Tone = keyof typeof TONES
 
 // ===== Static content (missions / announcements / workflow are portal
 // navigation and guidance copy, not data — no DB table backs these) =====
-const MISSIONS: { to: string; icon: Icon; title: string; desc: string; tone: Tone; filled?: boolean }[] = [
-  { to: '/ambassador/courts/add',     icon: IconPlusCircle,    title: 'เพิ่มสนามใหม่',        desc: 'เพิ่มข้อมูลสนามแห่งใหม่',        tone: 'blue',   filled: true },
+// `write: true` marks an entry point that ultimately adds/edits data — these
+// are disabled (not just hidden) for a rejected/blocked ambassador so it's
+// visibly clear *why* the tile can't be used, rather than it silently
+// vanishing. "ตรวจสอบข้อมูลสนาม" stays enabled — browsing/searching courts
+// is read-only; only submitting a change from there hits the write gate.
+const MISSIONS: { to: string; icon: Icon; title: string; desc: string; tone: Tone; filled?: boolean; write?: boolean }[] = [
+  { to: '/ambassador/courts/add',     icon: IconPlusCircle,    title: 'เพิ่มสนามใหม่',        desc: 'เพิ่มข้อมูลสนามแห่งใหม่',        tone: 'blue',   filled: true, write: true },
   { to: '/ambassador/courts/search',  icon: IconSearch,        title: 'ตรวจสอบข้อมูลสนาม',   desc: 'ช่วยตรวจสอบและอัปเดตข้อมูล',    tone: 'blue' },
-  { to: '/ambassador/events/submit',  icon: IconCalendarCheck, title: 'ส่งการแข่งขัน/กิจกรรม', desc: 'แจ้งการแข่งขันหรือกิจกรรม',     tone: 'green' },
-  { to: '/ambassador/recommend',      icon: IconUsers,         title: 'แนะนำบุคคล/คลับ',      desc: 'เชิญบุคคลหรือคลับเข้าร่วมเครือข่าย', tone: 'amber' },
-  { to: '/ambassador/stories/submit', icon: IconImage,         title: 'ส่งเรื่องราว',          desc: 'แบ่งปันเรื่องราวจากสนาม',        tone: 'purple' },
+  { to: '/ambassador/events/submit',  icon: IconCalendarCheck, title: 'ส่งการแข่งขัน/กิจกรรม', desc: 'แจ้งการแข่งขันหรือกิจกรรม',     tone: 'green',  write: true },
+  { to: '/ambassador/recommend',      icon: IconUsers,         title: 'แนะนำบุคคล/คลับ',      desc: 'เชิญบุคคลหรือคลับเข้าร่วมเครือข่าย', tone: 'amber', write: true },
+  { to: '/ambassador/stories/submit', icon: IconImage,         title: 'ส่งเรื่องราว',          desc: 'แบ่งปันเรื่องราวจากสนาม',        tone: 'purple', write: true },
 ]
 
-const SHORTCUTS: { to?: string; icon: Icon; label: string; tone: Tone; filled?: boolean }[] = [
-  { to: '/ambassador/courts/add',     icon: IconPlusCircle,    label: 'เพิ่มสนามใหม่',        tone: 'blue', filled: true },
+const SHORTCUTS: { to?: string; icon: Icon; label: string; tone: Tone; filled?: boolean; write?: boolean }[] = [
+  { to: '/ambassador/courts/add',     icon: IconPlusCircle,    label: 'เพิ่มสนามใหม่',        tone: 'blue', filled: true, write: true },
   { to: '/ambassador/courts/search',  icon: IconSearch,        label: 'ตรวจสอบข้อมูลสนาม',   tone: 'blue' },
-  { to: '/ambassador/events/submit',  icon: IconCalendarCheck, label: 'ส่งการแข่งขัน / กิจกรรม', tone: 'green' },
-  { to: '/ambassador/recommend',      icon: IconUsers,         label: 'แนะนำบุคคล / คลับ',    tone: 'amber' },
-  { to: '/ambassador/stories/submit', icon: IconImage,         label: 'ส่งเรื่องราว / ภาพ',   tone: 'purple' },
+  { to: '/ambassador/events/submit',  icon: IconCalendarCheck, label: 'ส่งการแข่งขัน / กิจกรรม', tone: 'green', write: true },
+  { to: '/ambassador/recommend',      icon: IconUsers,         label: 'แนะนำบุคคล / คลับ',    tone: 'amber', write: true },
+  { to: '/ambassador/stories/submit', icon: IconImage,         label: 'ส่งเรื่องราว / ภาพ',   tone: 'purple', write: true },
   {                                   icon: IconList,          label: 'รายการของฉัน',         tone: 'blue' },
   {                                   icon: IconInfo,          label: 'คู่มือการใช้งาน',       tone: 'slate' },
 ]
@@ -134,6 +140,18 @@ function ToneGlyph({
 
 export default function DashboardPage() {
   const location = useLocation()
+  const { user } = useAuth()
+  // A read-only session — the account can still log in and browse, but the
+  // server refuses every write regardless of what's shown here. Gating the
+  // UI too just makes that visible up front instead of failing silently
+  // after a click.
+  const isReadOnly = user?.status === 'rejected' || user?.status === 'blocked'
+  const statusBadge =
+    user?.status === 'rejected'
+      ? { label: 'ถูกปฏิเสธ', tone: 'danger' as const }
+      : user?.status === 'blocked'
+        ? { label: 'ถูกบล็อก', tone: 'warning' as const }
+        : { label: 'Approved', tone: 'success' as const }
   // Seeded once from the redirect state (e.g. right after saving a court) —
   // held in its own state so the toast can be dismissed independently of
   // location.state, which has no "consumed" concept of its own.
@@ -198,7 +216,7 @@ export default function DashboardPage() {
     <AppLayout>
       <TopBar
         title="ยินดีต้อนรับ, TOT Founding Ambassador"
-        badge={{ label: 'Approved', tone: 'success' }}
+        badge={statusBadge}
         subtitle="ขอบคุณที่ร่วมเป็นส่วนหนึ่งในการพัฒนาเทนนิสไทย"
         notifications={3}
         messages={1}
@@ -244,28 +262,44 @@ export default function DashboardPage() {
               ภารกิจแนะนำวันนี้
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {MISSIONS.map((m) => (
-                <Link
-                  key={m.title}
-                  to={m.to}
-                  className="rounded-2xl border border-border p-3.5 text-center hover:border-primary/40 hover:shadow-sm transition-all group flex flex-col items-center"
-                >
-                  {/* Only the primary action keeps a filled disc; the rest are
-                      bare coloured icons. */}
-                  <ToneGlyph
-                    icon={m.icon}
-                    tone={m.tone}
-                    filled={m.filled}
-                    shape={m.filled ? 'circle' : 'none'}
-                    size="w-10 h-10"
-                    glyph={m.filled ? 'w-5 h-5' : 'w-[30px] h-[30px]'}
-                  />
-                  <p className="text-xs font-semibold text-ink mt-2.5 group-hover:text-primary transition-colors">
-                    {m.title}
-                  </p>
-                  <p className="text-[11px] text-muted mt-1 leading-snug">{m.desc}</p>
-                </Link>
-              ))}
+              {MISSIONS.map((m) => {
+                const disabled = isReadOnly && m.write
+                const inner = (
+                  <>
+                    {/* Only the primary action keeps a filled disc; the rest are
+                        bare coloured icons. */}
+                    <ToneGlyph
+                      icon={m.icon}
+                      tone={m.tone}
+                      filled={m.filled}
+                      shape={m.filled ? 'circle' : 'none'}
+                      size="w-10 h-10"
+                      glyph={m.filled ? 'w-5 h-5' : 'w-[30px] h-[30px]'}
+                    />
+                    <p className="text-xs font-semibold text-ink mt-2.5 group-hover:text-primary transition-colors">
+                      {m.title}
+                    </p>
+                    <p className="text-[11px] text-muted mt-1 leading-snug">{m.desc}</p>
+                  </>
+                )
+                return disabled ? (
+                  <span
+                    key={m.title}
+                    title="ทำรายการนี้ไม่ได้จนกว่าบัญชีจะได้รับการอนุมัติอีกครั้ง"
+                    className="rounded-2xl border border-border p-3.5 text-center flex flex-col items-center opacity-50 cursor-not-allowed select-none"
+                  >
+                    {inner}
+                  </span>
+                ) : (
+                  <Link
+                    key={m.title}
+                    to={m.to}
+                    className="rounded-2xl border border-border p-3.5 text-center hover:border-primary/40 hover:shadow-sm transition-all group flex flex-col items-center"
+                  >
+                    {inner}
+                  </Link>
+                )
+              })}
             </div>
           </section>
 
@@ -295,12 +329,14 @@ export default function DashboardPage() {
             ) : recent.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <p className="text-sm text-muted mb-3">ยังไม่มีรายการที่ส่งเข้ามา</p>
-                <Link
-                  to="/ambassador/courts/add"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary font-semibold hover:underline"
-                >
-                  <IconPlusCircle className="w-4 h-4" /> เพิ่มสนามแรกของคุณ
-                </Link>
+                {!isReadOnly && (
+                  <Link
+                    to="/ambassador/courts/add"
+                    className="inline-flex items-center gap-1.5 text-sm text-primary font-semibold hover:underline"
+                  >
+                    <IconPlusCircle className="w-4 h-4" /> เพิ่มสนามแรกของคุณ
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -355,12 +391,14 @@ export default function DashboardPage() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             {(() => {
-                              const canDelete = s.review_status !== 'approved'
-                              const editHref = s.is_duplicate
-                                ? `/ambassador/submissions/${s.id}`
-                                : s.review_status === 'pending' && s.court
-                                  ? `/ambassador/courts/edit/${s.court.id}`
-                                  : null
+                              const canDelete = !isReadOnly && s.review_status !== 'approved'
+                              const editHref = isReadOnly
+                                ? null
+                                : s.is_duplicate
+                                  ? `/ambassador/submissions/${s.id}`
+                                  : s.review_status === 'pending' && s.court
+                                    ? `/ambassador/courts/edit/${s.court.id}`
+                                    : null
 
                               if (!editHref && !canDelete) {
                                 return (
@@ -423,15 +461,16 @@ export default function DashboardPage() {
                 )
                 const cls =
                   'rounded-2xl border border-border p-3 text-center flex flex-col items-center transition-all'
+                const disabled = isReadOnly && s.write
 
-                return s.to ? (
+                return s.to && !disabled ? (
                   <Link key={s.label} to={s.to} className={`${cls} hover:border-primary/40 hover:shadow-sm`}>
                     {inner}
                   </Link>
                 ) : (
                   <span
                     key={s.label}
-                    title="อยู่ระหว่างพัฒนา"
+                    title={disabled ? 'ทำรายการนี้ไม่ได้จนกว่าบัญชีจะได้รับการอนุมัติอีกครั้ง' : 'อยู่ระหว่างพัฒนา'}
                     className={`${cls} opacity-55 cursor-not-allowed select-none`}
                   >
                     {inner}

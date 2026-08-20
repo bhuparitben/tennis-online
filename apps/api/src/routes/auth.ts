@@ -28,7 +28,7 @@ router.post('/login', async (req: Request, res: Response) => {
   try {
     const parse = LoginSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten() });
+      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
 
@@ -73,12 +73,13 @@ router.post('/login', async (req: Request, res: Response) => {
       res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
       return;
     }
-    if (ambassador.status !== 'approved') {
-      const reason =
-        ambassador.status === 'rejected'
-          ? 'ใบสมัครของคุณไม่ได้รับการอนุมัติ'
-          : 'ใบสมัครของคุณอยู่ระหว่างรอการอนุมัติ';
-      res.status(403).json({ error: reason, status: ambassador.status });
+    // Pending is the only status still blocked at login — they've never
+    // been reviewed, so there's nothing of theirs to show yet. Rejected and
+    // blocked ambassadors DO get a session: they land in a read-only view
+    // (every write route re-checks status server-side regardless), see
+    // their own past submissions, and — for rejected — the reason why.
+    if (ambassador.status === 'pending') {
+      res.status(403).json({ error: 'ใบสมัครของคุณอยู่ระหว่างรอการอนุมัติ', status: ambassador.status });
       return;
     }
 
@@ -92,6 +93,8 @@ router.post('/login', async (req: Request, res: Response) => {
         role: 'ambassador',
         province_id: ambassador.province_id,
         province_name: ambassador.province?.name_th,
+        status: ambassador.status,
+        reject_reason: ambassador.reject_reason,
       },
     });
   } catch (err: unknown) {
@@ -191,7 +194,7 @@ async function loadProfile(id: number, role: 'admin' | 'ambassador') {
     select: {
       id: true, full_name: true, email: true, phone: true, line_id: true,
       province_id: true, district_zone: true, tennis_role: true,
-      status: true, created_at: true,
+      status: true, reject_reason: true, created_at: true,
       province: { select: { name_th: true } },
     },
   });
@@ -208,6 +211,7 @@ async function loadProfile(id: number, role: 'admin' | 'ambassador') {
     district_zone: amb.district_zone,
     tennis_role: amb.tennis_role,
     status: amb.status,
+    reject_reason: amb.reject_reason,
     created_at: amb.created_at,
   };
 }
@@ -243,7 +247,7 @@ router.patch('/me', requireAuth, async (req: Request, res: Response) => {
     const { id, role } = req.user!;
     const parse = ProfileSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง', details: parse.error.flatten() });
+      res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
     const d = parse.data;

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import type { AuthUser } from '../types'
+import type { AuthUser, AmbassadorStatus } from '../types'
 import api from '../lib/apiClient'
 
 interface AuthContextValue {
@@ -28,6 +28,8 @@ function toAuthUser(me: {
   email: string | null
   province_id?: number
   province_name?: string | null
+  status?: AmbassadorStatus
+  reject_reason?: string | null
 }): AuthUser {
   return {
     id: me.id,
@@ -36,6 +38,8 @@ function toAuthUser(me: {
     email: me.email ?? '',
     province_id: me.province_id,
     province_name: me.province_name ?? undefined,
+    status: me.status,
+    reject_reason: me.reject_reason,
   }
 }
 

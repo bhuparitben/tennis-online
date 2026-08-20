@@ -17,6 +17,11 @@ enum AmbassadorStatus {
   pending
   approved
   rejected
+  // Temporary suspension short of rejection — e.g. an ambassador flooding
+  // the system with junk submissions while the team sorts it out with them.
+  // Unlike rejected, this isn't a final decision; it's meant to be lifted
+  // (back to approved) once the issue is resolved.
+  blocked
 }
 
 enum CourtStatus {
@@ -200,6 +205,10 @@ model Ambassador {
   consent_accepted Boolean          @default(false)
   status           AmbassadorStatus @default(pending)
   note             String?          @db.Text
+  // Shown to the ambassador themselves on their read-only banner when
+  // rejected — distinct from `note`, which is an admin-only internal record
+  // and may contain things not meant for the applicant to see.
+  reject_reason    String?          @db.Text
   approved_by      Int?
   approved_at      DateTime?        @db.Timestamptz
   created_at       DateTime         @default(now()) @db.Timestamptz

@@ -20,6 +20,9 @@ type NavItem = {
   icon: Icon
   /** Omit while the page does not exist yet — the row renders inert. */
   to?: string
+  /** This entry point ultimately adds/edits data — disabled (not hidden) for
+   * a rejected/blocked ambassador, same reasoning as the dashboard tiles. */
+  write?: boolean
 }
 type NavGroup = { label: string; icon: Icon; items: NavItem[] }
 
@@ -30,7 +33,7 @@ const AMBASSADOR_GROUPS: NavGroup[] = [
     label: 'ข้อมูลสนาม',
     icon: IconCourt,
     items: [
-      { to: '/ambassador/courts/add', label: 'เพิ่มสนามใหม่', icon: IconPlusCircle },
+      { to: '/ambassador/courts/add', label: 'เพิ่มสนามใหม่', icon: IconPlusCircle, write: true },
       { label: 'ตรวจสอบ / อัปเดตข้อมูล', icon: IconSearch },
       { label: 'สนามของฉัน', icon: IconGrid },
     ],
@@ -39,7 +42,7 @@ const AMBASSADOR_GROUPS: NavGroup[] = [
     label: 'การแข่งขัน & กิจกรรม',
     icon: IconCalendar,
     items: [
-      { to: '/ambassador/events/submit', label: 'ส่งการแข่งขัน / กิจกรรม', icon: IconCalendarCheck },
+      { to: '/ambassador/events/submit', label: 'ส่งการแข่งขัน / กิจกรรม', icon: IconCalendarCheck, write: true },
       { label: 'รายการของฉัน', icon: IconList },
     ],
   },
@@ -47,7 +50,7 @@ const AMBASSADOR_GROUPS: NavGroup[] = [
     label: 'เครือข่าย & ชุมชน',
     icon: IconUsers,
     items: [
-      { to: '/ambassador/recommend', label: 'แนะนำบุคคล / คลับ', icon: IconUser },
+      { to: '/ambassador/recommend', label: 'แนะนำบุคคล / คลับ', icon: IconUser, write: true },
       { label: 'พื้นที่รับผิดชอบ', icon: IconMapPin },
     ],
   },
@@ -55,7 +58,7 @@ const AMBASSADOR_GROUPS: NavGroup[] = [
     label: 'เนื้อหา & เรื่องราว',
     icon: IconFileText,
     items: [
-      { to: '/ambassador/stories/submit', label: 'ส่งเรื่องราว / ภาพ', icon: IconEdit },
+      { to: '/ambassador/stories/submit', label: 'ส่งเรื่องราว / ภาพ', icon: IconEdit, write: true },
       { label: 'ผลงานของฉัน', icon: IconImage },
     ],
   },
@@ -84,18 +87,25 @@ const FOOTER_ITEMS: NavItem[] = [
 
 // ===== Rows =====
 
-function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
+function NavRow({ item, nested = false, readOnly = false }: { item: NavItem; nested?: boolean; readOnly?: boolean }) {
   const Glyph = item.icon
   const base = [
     'flex items-center gap-2.5 rounded-xl text-sm transition-colors',
     nested ? 'pl-4 pr-3 py-1.5' : 'px-3 py-2',
   ].join(' ')
 
-  // Pages that are not built yet stay visible but inert, so the sidebar shows
-  // the full map of the portal without routing anyone into a broken screen.
-  if (!item.to) {
+  const disabled = readOnly && item.write
+
+  // Pages that are not built yet — or, for a rejected/blocked ambassador,
+  // write actions — stay visible but inert, so the sidebar still shows the
+  // full map of the portal instead of routing into a broken screen or a
+  // 403 the user never saw coming.
+  if (!item.to || disabled) {
     return (
-      <span title="อยู่ระหว่างพัฒนา" className={`${base} text-muted/60 cursor-not-allowed select-none`}>
+      <span
+        title={disabled ? 'ทำรายการนี้ไม่ได้จนกว่าบัญชีจะได้รับการอนุมัติอีกครั้ง' : 'อยู่ระหว่างพัฒนา'}
+        className={`${base} text-muted/60 cursor-not-allowed select-none`}
+      >
         <Glyph className="w-[18px] h-[18px] shrink-0" />
         <span className="truncate">{item.label}</span>
       </span>
@@ -118,7 +128,7 @@ function NavRow({ item, nested = false }: { item: NavItem; nested?: boolean }) {
   )
 }
 
-function NavGroupBlock({ group }: { group: NavGroup }) {
+function NavGroupBlock({ group, readOnly }: { group: NavGroup; readOnly: boolean }) {
   const [open, setOpen] = useState(true)
   const Glyph = group.icon
 
@@ -139,7 +149,7 @@ function NavGroupBlock({ group }: { group: NavGroup }) {
       {open && (
         <div className="mt-0.5 space-y-0.5">
           {group.items.map((item) => (
-            <NavRow key={item.label} item={item} nested />
+            <NavRow key={item.label} item={item} nested readOnly={readOnly} />
           ))}
         </div>
       )}
@@ -151,6 +161,7 @@ export default function Sidebar() {
   const { user } = useAuth()
   const { sidebarOpen, setSidebarOpen } = useLayout()
   const isAdmin = user?.role === 'admin'
+  const readOnly = !isAdmin && (user?.status === 'rejected' || user?.status === 'blocked')
 
   const root = isAdmin ? ADMIN_ROOT : AMBASSADOR_ROOT
   const groups = isAdmin ? ADMIN_GROUPS : AMBASSADOR_GROUPS
@@ -183,7 +194,7 @@ export default function Sidebar() {
         <NavRow item={root} />
 
         {groups.map((group) => (
-          <NavGroupBlock key={group.label} group={group} />
+          <NavGroupBlock key={group.label} group={group} readOnly={readOnly} />
         ))}
 
         <div className="mt-5 pt-4 border-t border-border space-y-0.5">

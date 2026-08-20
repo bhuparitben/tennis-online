@@ -103,6 +103,8 @@ export interface CourtImageInput {
   is_cover: boolean
 }
 
+export type AmbassadorStatus = 'pending' | 'approved' | 'rejected' | 'blocked'
+
 export interface AmbassadorRow {
   id: number
   full_name: string
@@ -112,14 +114,37 @@ export interface AmbassadorRow {
   province_id: number
   district_zone: string | null
   tennis_role: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: AmbassadorStatus
   note: string | null
+  /** Shown back to the ambassador on their read-only banner when rejected. */
+  reject_reason: string | null
   created_at: string
   approved_at: string | null
   /** False until the account has both an email and a password set. */
   can_login: boolean
   province: { id: number; name_th: string } | null
   approvedBy: { id: number; name: string } | null
+}
+
+/**
+ * One submission this ambassador has made — for the admin's pre-decision
+ * review. Covers both a brand-new court (`court` set) and a duplicate/update
+ * proposal against a court someone else created (`matchedCourt` set) — an
+ * ambassador who only ever files "ซ้ำ" updates would show nothing if this
+ * only looked at courts they personally created.
+ */
+export interface AmbassadorSubmissionSummary {
+  id: number
+  is_duplicate: boolean
+  review_status: string
+  created_at: string
+  court: { id: number; name: string; is_published: boolean } | null
+  matchedCourt: { id: number; name: string; is_published: boolean } | null
+}
+
+export interface AmbassadorDetail extends AmbassadorRow {
+  submissions: AmbassadorSubmissionSummary[]
+  _count: { courts: number; submissions: number }
 }
 
 export interface UserProfile {
@@ -135,7 +160,8 @@ export interface UserProfile {
   province_name?: string | null
   district_zone?: string | null
   tennis_role?: string | null
-  status?: string
+  status?: AmbassadorStatus
+  reject_reason?: string | null
 }
 
 export interface AuthUser {
@@ -145,6 +171,9 @@ export interface AuthUser {
   role: 'admin' | 'ambassador'
   province_id?: number
   province_name?: string
+  /** Ambassador only — used to gate write actions and show the read-only banner. */
+  status?: AmbassadorStatus
+  reject_reason?: string | null
 }
 
 export interface Court {

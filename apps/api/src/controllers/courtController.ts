@@ -6,10 +6,14 @@ import { prisma } from '../lib/prisma.js';
 function fail(res: Response, err: unknown, label: string, generic: string) {
   const msg = err instanceof Error ? err.message : String(err);
   console.error(`[courts/${label}]`, msg);
+  // Outside production, surface the real error message in the response body
+  // too — this environment's terminal output isn't reachable for debugging,
+  // so this is the only way to see what actually broke when it recurs.
+  const debug = process.env.NODE_ENV === 'production' ? undefined : msg;
   if (msg.includes('Authentication failed') || msg.includes('ECONNREFUSED') || msg.includes('P1001')) {
-    res.status(503).json({ error: 'Database unavailable — check DATABASE_URL credentials' });
+    res.status(503).json({ error: 'Database unavailable — check DATABASE_URL credentials', debug });
   } else {
-    res.status(500).json({ error: generic });
+    res.status(500).json({ error: generic, debug });
   }
 }
 
@@ -65,17 +69,20 @@ const SurfaceCountRowSchema = z.object({
 
 const CourtBaseSchema = z.object({
   // Step 1 — Basic Info
+  // Max lengths mirror the DB's @db.VarChar() column limits (schema.prisma)
+  // exactly — without them here, an over-length value sails past this check
+  // and only fails later as a raw Postgres error during the insert.
   name: z.string().min(2).max(200),
   province_id: z.number().int().positive(),
   district_id: z.number().int().positive().optional().nullable(),
-  address_line: z.string().optional(),
-  subdistrict: z.string().optional(),
-  postal_code: z.string().optional(),
-  google_map_link: z.string().url().optional().or(z.literal('')),
-  phone: z.string().optional(),
-  line_id: z.string().optional(),
-  facebook_page: z.string().optional(),
-  website: z.string().optional(),
+  address_line: z.string().max(300, 'ที่อยู่ยาวเกินไป (สูงสุด 300 ตัวอักษร)').optional(),
+  subdistrict: z.string().max(100, 'ตำบล/แขวง ยาวเกินไป (สูงสุด 100 ตัวอักษร)').optional(),
+  postal_code: z.string().max(10, 'รหัสไปรษณีย์ยาวเกินไป (สูงสุด 10 ตัวอักษร)').optional(),
+  google_map_link: z.string().max(500, 'ลิงก์ยาวเกินไป (สูงสุด 500 ตัวอักษร)').url().optional().or(z.literal('')),
+  phone: z.string().max(20, 'เบอร์โทรศัพท์ยาวเกินไป (สูงสุด 20 ตัวอักษร) — ถ้ามีหลายเบอร์ ให้ใส่เบอร์เดียว').optional(),
+  line_id: z.string().max(100, 'LINE ID ยาวเกินไป (สูงสุด 100 ตัวอักษร)').optional(),
+  facebook_page: z.string().max(200, 'ลิงก์ Facebook Page ยาวเกินไป (สูงสุด 200 ตัวอักษร)').optional(),
+  website: z.string().max(200, 'ลิงก์ Website ยาวเกินไป (สูงสุด 200 ตัวอักษร)').optional(),
   // The wizard defaults these to '' when left blank — accept that and treat
   // it the same as "not set" instead of failing the regex.
   open_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')).transform((v) => v || undefined),
@@ -133,7 +140,7 @@ export async function checkDuplicate(req: Request, res: Response): Promise<void>
   try {
     const parse = DuplicateCheckSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten() });
+      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
 
@@ -173,7 +180,7 @@ export async function createCourt(req: Request, res: Response): Promise<void> {
   try {
     const parse = CreateCourtSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten() });
+      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
 
@@ -279,7 +286,7 @@ export async function updateCourt(req: Request, res: Response): Promise<void> {
 
     const parse = UpdateCourtSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten() });
+      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
 

@@ -12,7 +12,7 @@ import StepAmenities from '../../components/court/steps/StepAmenities'
 import StepPhotos from '../../components/court/steps/StepPhotos'
 import { EMPTY_COURT_FORM, courtToFormData } from '../../lib/courtFormData'
 import type { CourtFormData, CourtWithRelations } from '../../types'
-import api from '../../lib/apiClient'
+import api, { formatApiError } from '../../lib/apiClient'
 import { useAuth } from '../../contexts/AuthContext'
 
 // ===== Step config =====
@@ -155,8 +155,7 @@ export default function AddCourtPage() {
         },
       })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setSubmitError(msg ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
+      setSubmitError(formatApiError(err, 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'))
     } finally {
       setSubmitting(false)
       navLockRef.current = false
@@ -214,7 +213,7 @@ export default function AddCourtPage() {
 
               {/* Error */}
               {submitError && (
-                <div className="mt-4 rounded-xl bg-danger-light border border-danger/20 px-4 py-3 text-sm text-danger">
+                <div className="mt-4 rounded-xl bg-danger-light border border-danger/20 px-4 py-3 text-sm text-danger whitespace-pre-line">
                   {submitError}
                 </div>
               )}

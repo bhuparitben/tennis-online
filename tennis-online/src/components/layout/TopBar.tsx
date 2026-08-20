@@ -14,7 +14,7 @@ interface Crumb { label: string; to?: string }
 interface TopBarProps {
   title: string
   /** Pill rendered inline after the title, e.g. approval state. */
-  badge?: { label: string; tone?: 'success' | 'warning' | 'primary' }
+  badge?: { label: string; tone?: 'success' | 'warning' | 'primary' | 'danger' }
   subtitle?: string
   breadcrumbs?: Crumb[]
   actions?: ReactNode
@@ -27,6 +27,7 @@ const BADGE_TONES = {
   success: 'bg-success-light text-success',
   warning: 'bg-warning-light text-warning',
   primary: 'bg-primary-light text-primary',
+  danger:  'bg-danger-light text-danger',
 } as const
 
 function IconButton({

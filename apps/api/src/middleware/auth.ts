@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma.js';
 
 export interface JwtPayload {
   id: number;
@@ -82,4 +83,41 @@ export function requireRole(...roles: JwtPayload['role'][]) {
     }
     next();
   };
+}
+
+/**
+ * Gates write actions on an ambassador's *current* status — the JWT payload
+ * only carries id/role/email, so a rejected or blocked ambassador with an
+ * already-issued, still-valid session cookie could otherwise keep adding,
+ * editing, or deleting data through these routes. Rejected/blocked accounts
+ * are allowed to log in and browse read-only (per the ambassador-facing
+ * banner), but every mutating route must reject them here regardless of
+ * what the UI shows. Admins are untouched — this only checks when the
+ * caller's role is 'ambassador'.
+ */
+export async function requireActiveAmbassador(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (!req.user || req.user.role !== 'ambassador') { next(); return; }
+
+  try {
+    const amb = await prisma.ambassador.findUnique({
+      where: { id: req.user.id },
+      select: { status: true, reject_reason: true },
+    });
+    if (!amb) {
+      res.status(401).json({ error: 'Session invalid' });
+      return;
+    }
+    if (amb.status === 'approved') { next(); return; }
+
+    const messages: Record<string, string> = {
+      rejected: amb.reject_reason
+        ? `บัญชีของคุณถูกปฏิเสธ — เหตุผล: ${amb.reject_reason}`
+        : 'บัญชีของคุณถูกปฏิเสธ ไม่สามารถทำรายการนี้ได้',
+      blocked: 'บัญชีของคุณถูกระงับการใช้งานชั่วคราว กรุณาติดต่อทีมงาน',
+      pending: 'บัญชียังไม่ได้รับการอนุมัติ ยังไม่สามารถทำรายการนี้ได้',
+    };
+    res.status(403).json({ error: messages[amb.status] ?? 'ไม่มีสิทธิ์ทำรายการนี้', status: amb.status });
+  } catch {
+    res.status(500).json({ error: 'ตรวจสอบสิทธิ์ไม่สำเร็จ' });
+  }
 }

@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
-import { requireAuth, requireRole } from './middleware/auth.js';
+import { requireAuth, requireRole, requireActiveAmbassador } from './middleware/auth.js';
 
 // Keep the process alive even if an async route throws without try/catch.
 // Each such error still logs clearly so it's not silently swallowed.
@@ -70,6 +70,7 @@ app.post(
   '/api/upload',
   requireAuth,
   requireRole('ambassador', 'admin'),
+  requireActiveAmbassador,
   upload.single('file'),
   (req, res) => {
     if (!req.file) {

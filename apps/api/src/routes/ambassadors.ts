@@ -44,6 +44,7 @@ router.get('/', requireAuth, requireRole('admin'), async (_req: Request, res: Re
       select: {
         id: true, full_name: true, email: true, phone: true, line_id: true,
         province_id: true, district_zone: true, tennis_role: true, status: true, note: true,
+        reject_reason: true,
         created_at: true, approved_at: true,
         password_hash: true,
         province: { select: { id: true, name_th: true } },
@@ -63,7 +64,16 @@ router.get('/', requireAuth, requireRole('admin'), async (_req: Request, res: Re
   }
 });
 
-// GET /api/ambassadors/:id — admin only
+// GET /api/ambassadors/:id — admin only. Includes every submission this
+// ambassador has made (name/status/date only, no full detail) so an admin
+// can see what they've actually contributed before deciding to
+// reject/reset/block them — not just their profile fields.
+//
+// This has to read from `submissions`, not `courts` (Court.submitted_by) —
+// `courts` only covers courts this ambassador originated from scratch, and
+// misses every "ซ้ำ" (duplicate/update) proposal they filed against a court
+// someone else created, which is the more common case and exactly the kind
+// of activity an admin needs to see before a reject/block decision.
 router.get('/:id', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -71,7 +81,22 @@ router.get('/:id', requireAuth, requireRole('admin'), async (req: Request, res: 
 
     const amb = await prisma.ambassador.findUnique({
       where: { id },
-      include: { province: true, approvedBy: { select: { id: true, name: true } } },
+      include: {
+        province: true,
+        approvedBy: { select: { id: true, name: true } },
+        submissions: {
+          select: {
+            id: true,
+            is_duplicate: true,
+            review_status: true,
+            created_at: true,
+            court: { select: { id: true, name: true, is_published: true } },
+            matchedCourt: { select: { id: true, name: true, is_published: true } },
+          },
+          orderBy: { created_at: 'desc' },
+        },
+        _count: { select: { courts: true, submissions: true } },
+      },
     });
     if (!amb) { res.status(404).json({ error: 'Not found' }); return; }
 
@@ -202,6 +227,8 @@ router.patch('/:id/approve', requireAuth, requireRole('admin'), async (req: Requ
         email,
         approved_by: req.user!.id,
         approved_at: new Date(),
+        // A prior rejection reason no longer applies once re-approved.
+        reject_reason: null,
         ...(password_hash ? { password_hash } : {}),
         ...(note ? { note } : {}),
       },
@@ -218,7 +245,12 @@ router.patch('/:id/approve', requireAuth, requireRole('admin'), async (req: Requ
   }
 });
 
-const RejectSchema = z.object({ note: z.string().max(2000).optional() });
+// A reason is mandatory — it's shown back to the ambassador on their
+// read-only banner, so a vague or missing reason would leave them stuck not
+// knowing what to fix or dispute.
+const RejectSchema = z.object({
+  reason: z.string().trim().min(5, 'กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร').max(2000),
+});
 
 // PATCH /api/ambassadors/:id/reject
 router.patch('/:id/reject', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
@@ -227,6 +259,38 @@ router.patch('/:id/reject', requireAuth, requireRole('admin'), async (req: Reque
     if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: 'Invalid id' }); return; }
 
     const parse = RejectSchema.safeParse(req.body);
+    if (!parse.success) {
+      res.status(400).json({ error: parse.error.issues[0]?.message ?? 'กรุณาระบุเหตุผล' });
+      return;
+    }
+
+    const target = await prisma.ambassador.findUnique({ where: { id } });
+    if (!target) { res.status(404).json({ error: 'ไม่พบผู้สมัคร' }); return; }
+
+    await prisma.ambassador.update({
+      where: { id },
+      data: { status: 'rejected', reject_reason: parse.data.reason },
+    });
+    res.json({ message: 'ปฏิเสธใบสมัครแล้ว' });
+  } catch (err) {
+    fail(res, err, 'reject', 'ดำเนินการไม่สำเร็จ');
+  }
+});
+
+const BlockSchema = z.object({ note: z.string().trim().max(2000).optional() });
+
+// PATCH /api/ambassadors/:id/block — a softer, reversible suspension: the
+// account (and any data it already submitted) stays exactly as-is, but it
+// can no longer add/edit/delete anything until an admin approves or
+// rejects it again. Unlike reject, this carries no reason shown to the
+// ambassador — it's meant as a "hold" while the team sorts things out with
+// them directly, not a final decision that needs justifying back to them.
+router.patch('/:id/block', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: 'Invalid id' }); return; }
+
+    const parse = BlockSchema.safeParse(req.body);
     if (!parse.success) { res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' }); return; }
 
     const target = await prisma.ambassador.findUnique({ where: { id } });
@@ -234,11 +298,34 @@ router.patch('/:id/reject', requireAuth, requireRole('admin'), async (req: Reque
 
     await prisma.ambassador.update({
       where: { id },
-      data: { status: 'rejected', ...(parse.data.note ? { note: parse.data.note } : {}) },
+      data: { status: 'blocked', ...(parse.data.note ? { note: parse.data.note } : {}) },
     });
-    res.json({ message: 'ปฏิเสธใบสมัครแล้ว' });
+    res.json({ message: 'ระงับการใช้งานบัญชีแล้ว' });
   } catch (err) {
-    fail(res, err, 'reject', 'ดำเนินการไม่สำเร็จ');
+    fail(res, err, 'block', 'ดำเนินการไม่สำเร็จ');
+  }
+});
+
+// PATCH /api/ambassadors/:id/reset — send an approved/rejected/blocked
+// applicant back to "pending" so the admin can re-review it (e.g. undo a
+// mis-click). Login credentials (email/password) are left untouched — only
+// the review status, approval stamp, and reject reason reset, so
+// re-approving later doesn't require re-entering an email or password.
+router.patch('/:id/reset', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: 'Invalid id' }); return; }
+
+    const target = await prisma.ambassador.findUnique({ where: { id } });
+    if (!target) { res.status(404).json({ error: 'ไม่พบผู้สมัคร' }); return; }
+
+    await prisma.ambassador.update({
+      where: { id },
+      data: { status: 'pending', approved_at: null, approved_by: null, reject_reason: null },
+    });
+    res.json({ message: 'ตั้งสถานะเป็นรอตรวจสอบแล้ว' });
+  } catch (err) {
+    fail(res, err, 'reset', 'ดำเนินการไม่สำเร็จ');
   }
 });
 

@@ -104,7 +104,7 @@ export async function createDuplicateSubmission(req: Request, res: Response): Pr
 
     const parse = schema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten() });
+      res.status(400).json({ error: 'Invalid input', details: parse.error.flatten(), issues: parse.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })) });
       return;
     }
 
